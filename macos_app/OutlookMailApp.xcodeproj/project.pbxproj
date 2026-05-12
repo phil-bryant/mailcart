@@ -1,0 +1,407 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		02411B184BBA10028BBD3D74 /* OutlookMailContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1819FB2AD2FB9B7D50D33C8 /* OutlookMailContentView.swift */; };
+		34D6BAA46A16EE1398C51F03 /* CrashReporter in Frameworks */ = {isa = PBXBuildFile; productRef = 987CC779DF168636BB04DFA8 /* CrashReporter */; };
+		38F35BC2CB67665EB3FA29B1 /* CrashReporterService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1277175D17109F36BEEA96F2 /* CrashReporterService.swift */; };
+		43C532233D5191DD574C562A /* outlook_mailcart.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1FF749EFE0DB2EE5FBA3D74E /* outlook_mailcart.cpp */; };
+		488E2CB4F9BF4B5B30A67247 /* OutlookMailApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 834D0898A5512479035856D1 /* OutlookMailApp.swift */; };
+		9427F19B4BCA758205DCBE9D /* outlook_client.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FB102209B9A8F39CD7FC3A4A /* outlook_client.cpp */; };
+		987C3F5DF66638D38FA5CA7B /* OutlookMailViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 304FB3FBCDF84BB1B6469020 /* OutlookMailViewModel.swift */; };
+		9E0BC261A6E7A3B76E976FC8 /* OutlookClientBridge.mm in Sources */ = {isa = PBXBuildFile; fileRef = 6C7302C2A768541C9DBEABD7 /* OutlookClientBridge.mm */; };
+		B0A8F8D1811CD834F7B78BE4 /* mailcart.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E78544E6716E4A627EB0E052 /* mailcart.cpp */; };
+		D40BDA569F369BFB9AEC640D /* mime_content.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F22FB61B637E64BD23B3CED7 /* mime_content.cpp */; };
+		F489FDC5D419EB2C4B1A2ECA /* OutlookBridgeModels.m in Sources */ = {isa = PBXBuildFile; fileRef = 14ADDB32073CFF4D222C37D9 /* OutlookBridgeModels.m */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		02F0151B46D6D804E807989A /* mime_content.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = mime_content.hpp; sourceTree = "<group>"; };
+		1277175D17109F36BEEA96F2 /* CrashReporterService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrashReporterService.swift; sourceTree = "<group>"; };
+		12E50FAF638F14451ECC0334 /* OutlookMailApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = OutlookMailApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		14ADDB32073CFF4D222C37D9 /* OutlookBridgeModels.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = OutlookBridgeModels.m; sourceTree = "<group>"; };
+		1FF749EFE0DB2EE5FBA3D74E /* outlook_mailcart.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = outlook_mailcart.cpp; sourceTree = "<group>"; };
+		237F087A68BA7DFFFF5064A2 /* mailcart.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = mailcart.hpp; sourceTree = "<group>"; };
+		304FB3FBCDF84BB1B6469020 /* OutlookMailViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OutlookMailViewModel.swift; sourceTree = "<group>"; };
+		4E508868535D6CCDB150506C /* outlook_mailcart.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = outlook_mailcart.hpp; sourceTree = "<group>"; };
+		6C7302C2A768541C9DBEABD7 /* OutlookClientBridge.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = OutlookClientBridge.mm; sourceTree = "<group>"; };
+		834D0898A5512479035856D1 /* OutlookMailApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OutlookMailApp.swift; sourceTree = "<group>"; };
+		9EA93202CB72324DD42153CB /* outlook_client.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = outlook_client.hpp; sourceTree = "<group>"; };
+		AC6720ADCE9856AA06C0E0E7 /* OutlookClientBridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = OutlookClientBridge.h; sourceTree = "<group>"; };
+		E78544E6716E4A627EB0E052 /* mailcart.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = mailcart.cpp; sourceTree = "<group>"; };
+		F1819FB2AD2FB9B7D50D33C8 /* OutlookMailContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OutlookMailContentView.swift; sourceTree = "<group>"; };
+		F22FB61B637E64BD23B3CED7 /* mime_content.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = mime_content.cpp; sourceTree = "<group>"; };
+		F58A57CD9E0C1E422C3FF247 /* OutlookBridgeModels.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = OutlookBridgeModels.h; sourceTree = "<group>"; };
+		FB102209B9A8F39CD7FC3A4A /* outlook_client.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = outlook_client.cpp; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		EB0B0FA4CE7DA5D3CC494B2F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				34D6BAA46A16EE1398C51F03 /* CrashReporter in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		0223848A18D1CE288AE8ADA8 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				12E50FAF638F14451ECC0334 /* OutlookMailApp.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		11778CE5A6F30BBC9F8ADBAF /* include */ = {
+			isa = PBXGroup;
+			children = (
+				237F087A68BA7DFFFF5064A2 /* mailcart.hpp */,
+				02F0151B46D6D804E807989A /* mime_content.hpp */,
+				9EA93202CB72324DD42153CB /* outlook_client.hpp */,
+				4E508868535D6CCDB150506C /* outlook_mailcart.hpp */,
+			);
+			path = include;
+			sourceTree = "<group>";
+		};
+		1524191E8CA58FA48057B101 /* src */ = {
+			isa = PBXGroup;
+			children = (
+				E78544E6716E4A627EB0E052 /* mailcart.cpp */,
+				F22FB61B637E64BD23B3CED7 /* mime_content.cpp */,
+				FB102209B9A8F39CD7FC3A4A /* outlook_client.cpp */,
+				1FF749EFE0DB2EE5FBA3D74E /* outlook_mailcart.cpp */,
+			);
+			path = src;
+			sourceTree = "<group>";
+		};
+		18690134B8FF4A1764A6FD34 /* cpp_core */ = {
+			isa = PBXGroup;
+			children = (
+				11778CE5A6F30BBC9F8ADBAF /* include */,
+				1524191E8CA58FA48057B101 /* src */,
+			);
+			name = cpp_core;
+			path = ../cpp_core;
+			sourceTree = "<group>";
+		};
+		2C180B84D492D87AB47B708E = {
+			isa = PBXGroup;
+			children = (
+				333CB242F90051537B74408A /* Bridge */,
+				18690134B8FF4A1764A6FD34 /* cpp_core */,
+				7DE35A124B21ABE174ED4DDE /* UI */,
+				0223848A18D1CE288AE8ADA8 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		333CB242F90051537B74408A /* Bridge */ = {
+			isa = PBXGroup;
+			children = (
+				F58A57CD9E0C1E422C3FF247 /* OutlookBridgeModels.h */,
+				14ADDB32073CFF4D222C37D9 /* OutlookBridgeModels.m */,
+				AC6720ADCE9856AA06C0E0E7 /* OutlookClientBridge.h */,
+				6C7302C2A768541C9DBEABD7 /* OutlookClientBridge.mm */,
+			);
+			path = Bridge;
+			sourceTree = "<group>";
+		};
+		7DE35A124B21ABE174ED4DDE /* UI */ = {
+			isa = PBXGroup;
+			children = (
+				1277175D17109F36BEEA96F2 /* CrashReporterService.swift */,
+				834D0898A5512479035856D1 /* OutlookMailApp.swift */,
+				F1819FB2AD2FB9B7D50D33C8 /* OutlookMailContentView.swift */,
+				304FB3FBCDF84BB1B6469020 /* OutlookMailViewModel.swift */,
+			);
+			path = UI;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		F277ACC2E694DAFBD6FA505D /* OutlookMailApp */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 6DC7F2AD3FE5774804860DB0 /* Build configuration list for PBXNativeTarget "OutlookMailApp" */;
+			buildPhases = (
+				53BB950CC74EC34280FB7614 /* Sources */,
+				EB0B0FA4CE7DA5D3CC494B2F /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = OutlookMailApp;
+			packageProductDependencies = (
+				987CC779DF168636BB04DFA8 /* CrashReporter */,
+			);
+			productName = OutlookMailApp;
+			productReference = 12E50FAF638F14451ECC0334 /* OutlookMailApp.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		BCDC08119895F06A6F71B9A4 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+				};
+			};
+			buildConfigurationList = D6295AB1CA5BFB387EFD5B96 /* Build configuration list for PBXProject "OutlookMailApp" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 2C180B84D492D87AB47B708E;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				E35F0FBD8D77CBF2E7F37A4B /* XCRemoteSwiftPackageReference "plcrashreporter" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 0223848A18D1CE288AE8ADA8 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				F277ACC2E694DAFBD6FA505D /* OutlookMailApp */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		53BB950CC74EC34280FB7614 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				38F35BC2CB67665EB3FA29B1 /* CrashReporterService.swift in Sources */,
+				F489FDC5D419EB2C4B1A2ECA /* OutlookBridgeModels.m in Sources */,
+				9E0BC261A6E7A3B76E976FC8 /* OutlookClientBridge.mm in Sources */,
+				488E2CB4F9BF4B5B30A67247 /* OutlookMailApp.swift in Sources */,
+				02411B184BBA10028BBD3D74 /* OutlookMailContentView.swift in Sources */,
+				987C3F5DF66638D38FA5CA7B /* OutlookMailViewModel.swift in Sources */,
+				B0A8F8D1811CD834F7B78BE4 /* mailcart.cpp in Sources */,
+				D40BDA569F369BFB9AEC640D /* mime_content.cpp in Sources */,
+				9427F19B4BCA758205DCBE9D /* outlook_client.cpp in Sources */,
+				43C532233D5191DD574C562A /* outlook_mailcart.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		27AAD517685A489AD876370E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_APP_INTENTS_METADATA_GENERATION = NO;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_PREVIEWS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				HEADER_SEARCH_PATHS = (
+					"$(SRCROOT)/../cpp_core/include",
+				);
+				INFOPLIST_FILE = "$(SRCROOT)/Info.plist";
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.local.outlookmailapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OBJC_BRIDGING_HEADER = "OutlookMail-Bridging-Header.h";
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		855FA395441723B2B7C008AD /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				COMBINE_HIDPI_IMAGES = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		8FF24A049C71AE9F6D4828CA /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_APP_INTENTS_METADATA_GENERATION = NO;
+				ENABLE_PREVIEWS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				HEADER_SEARCH_PATHS = (
+					"$(SRCROOT)/../cpp_core/include",
+				);
+				INFOPLIST_FILE = "$(SRCROOT)/Info.plist";
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.local.outlookmailapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OBJC_BRIDGING_HEADER = "OutlookMail-Bridging-Header.h";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		D802D87A50FCA364AEC5B9CC /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				COMBINE_HIDPI_IMAGES = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		6DC7F2AD3FE5774804860DB0 /* Build configuration list for PBXNativeTarget "OutlookMailApp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D802D87A50FCA364AEC5B9CC /* Debug */,
+				855FA395441723B2B7C008AD /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		D6295AB1CA5BFB387EFD5B96 /* Build configuration list for PBXProject "OutlookMailApp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8FF24A049C71AE9F6D4828CA /* Debug */,
+				27AAD517685A489AD876370E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		E35F0FBD8D77CBF2E7F37A4B /* XCRemoteSwiftPackageReference "plcrashreporter" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/microsoft/plcrashreporter.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.12.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		987CC779DF168636BB04DFA8 /* CrashReporter */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E35F0FBD8D77CBF2E7F37A4B /* XCRemoteSwiftPackageReference "plcrashreporter" */;
+			productName = CrashReporter;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = BCDC08119895F06A6F71B9A4 /* Project object */;
+}

@@ -1,0 +1,17 @@
+Checks: >
+  -*,
+  readability-*,
+  performance-*,
+  portability-*,
+  bugprone-*,
+  cert-*,
+  clang-analyzer-*,
+  security.*
+WarningsAsErrors: ''
+HeaderFilterRegex: '^(cpp_core/include|cpp_core/src|macos_app/Bridge)/'
+FormatStyle: none
+CheckOptions:
+  - key: bugprone-suspicious-string-compare.WarnOnImplicitComparison
+    value: 'true'
+  - key: readability-identifier-naming.VariableCase
+    value: lower_case

@@ -1,0 +1,38 @@
+name: OutlookMailApp
+options:
+  deploymentTarget:
+    macOS: "13.0"
+settings:
+  base:
+    PRODUCT_BUNDLE_IDENTIFIER: com.local.outlookmailapp
+    SWIFT_OBJC_BRIDGING_HEADER: OutlookMail-Bridging-Header.h
+    CLANG_CXX_LANGUAGE_STANDARD: c++17
+    HEADER_SEARCH_PATHS:
+      - $(SRCROOT)/../cpp_core/include
+    INFOPLIST_FILE: $(SRCROOT)/Info.plist
+    ENABLE_APP_INTENTS_METADATA_GENERATION: NO
+    ENABLE_PREVIEWS: NO
+packages:
+  plcrashreporter:
+    url: https://github.com/microsoft/plcrashreporter.git
+    from: 1.12.0
+targets:
+  OutlookMailApp:
+    type: application
+    platform: macOS
+    dependencies:
+      - package: plcrashreporter
+        product: CrashReporter
+    sources:
+      - path: UI
+      - path: Bridge
+      - path: ../cpp_core
+        includes:
+          - src/mailcart.cpp
+          - include/mailcart.hpp
+          - src/mime_content.cpp
+          - include/mime_content.hpp
+          - src/outlook_mailcart.cpp
+          - include/outlook_mailcart.hpp
+          - src/outlook_client.cpp
+          - include/outlook_client.hpp

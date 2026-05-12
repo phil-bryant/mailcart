@@ -1,0 +1,16 @@
+.env
+.DS_Store
+.cursor/rules/*
+
+# Local build artifacts and IDE caches
+#R001: Exclude local build output from version control.
+#R015: Support cached-removal cleanup policy for generated artifacts.
+#R020: Keep ignored artifact paths untracked after cleanup.
+.build/
+#R001: Exclude generated SAST reports from version control.
+reports/sast/
+#R005: Exclude Xcode DerivedData and user-specific metadata.
+DerivedData/
+*.xcuserdatad/
+*.xcuserstate
+#R010: Keep source and shared project configuration tracked.

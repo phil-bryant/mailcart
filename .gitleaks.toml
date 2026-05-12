@@ -1,0 +1,9 @@
+title = "mailcart-repo-gitleaks"
+
+[allowlist]
+description = "Allow generated and requirement/test fixtures."
+paths = [
+  '''^\.build/''',
+  '''^requirements/''',
+  '''^tests/'''
+]

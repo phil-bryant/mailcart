@@ -1,0 +1,15 @@
+Checks: >
+  -*,
+  clang-analyzer-*,
+  bugprone-easily-swappable-parameters,
+  bugprone-exception-escape,
+  cert-*,
+  security.*
+WarningsAsErrors: >
+  clang-analyzer-*,
+  bugprone-easily-swappable-parameters,
+  bugprone-exception-escape,
+  cert-*,
+  security.*
+HeaderFilterRegex: '^(cpp_core/include|cpp_core/src|macos_app/Bridge)/'
+FormatStyle: none
