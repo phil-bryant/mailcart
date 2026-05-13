@@ -9,13 +9,13 @@
 /* Begin PBXBuildFile section */
 		02411B184BBA10028BBD3D74 /* OutlookMailContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1819FB2AD2FB9B7D50D33C8 /* OutlookMailContentView.swift */; };
 		34D6BAA46A16EE1398C51F03 /* CrashReporter in Frameworks */ = {isa = PBXBuildFile; productRef = 987CC779DF168636BB04DFA8 /* CrashReporter */; };
+		36F81740D664C322739548E3 /* outlook_mailcart.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C0412166018377C2D1673739 /* outlook_mailcart.cpp */; };
 		38F35BC2CB67665EB3FA29B1 /* CrashReporterService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1277175D17109F36BEEA96F2 /* CrashReporterService.swift */; };
-		43C532233D5191DD574C562A /* outlook_mailcart.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1FF749EFE0DB2EE5FBA3D74E /* outlook_mailcart.cpp */; };
 		488E2CB4F9BF4B5B30A67247 /* OutlookMailApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 834D0898A5512479035856D1 /* OutlookMailApp.swift */; };
 		9427F19B4BCA758205DCBE9D /* outlook_client.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FB102209B9A8F39CD7FC3A4A /* outlook_client.cpp */; };
+		95EF99D370D3B153BE411C64 /* mailcart.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8687E1476F9FCA6B9B9FC798 /* mailcart.cpp */; };
 		987C3F5DF66638D38FA5CA7B /* OutlookMailViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 304FB3FBCDF84BB1B6469020 /* OutlookMailViewModel.swift */; };
 		9E0BC261A6E7A3B76E976FC8 /* OutlookClientBridge.mm in Sources */ = {isa = PBXBuildFile; fileRef = 6C7302C2A768541C9DBEABD7 /* OutlookClientBridge.mm */; };
-		B0A8F8D1811CD834F7B78BE4 /* mailcart.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E78544E6716E4A627EB0E052 /* mailcart.cpp */; };
 		D40BDA569F369BFB9AEC640D /* mime_content.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F22FB61B637E64BD23B3CED7 /* mime_content.cpp */; };
 		F489FDC5D419EB2C4B1A2ECA /* OutlookBridgeModels.m in Sources */ = {isa = PBXBuildFile; fileRef = 14ADDB32073CFF4D222C37D9 /* OutlookBridgeModels.m */; };
 /* End PBXBuildFile section */
@@ -25,15 +25,15 @@
 		1277175D17109F36BEEA96F2 /* CrashReporterService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrashReporterService.swift; sourceTree = "<group>"; };
 		12E50FAF638F14451ECC0334 /* OutlookMailApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = OutlookMailApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		14ADDB32073CFF4D222C37D9 /* OutlookBridgeModels.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = OutlookBridgeModels.m; sourceTree = "<group>"; };
-		1FF749EFE0DB2EE5FBA3D74E /* outlook_mailcart.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = outlook_mailcart.cpp; sourceTree = "<group>"; };
-		237F087A68BA7DFFFF5064A2 /* mailcart.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = mailcart.hpp; sourceTree = "<group>"; };
 		304FB3FBCDF84BB1B6469020 /* OutlookMailViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OutlookMailViewModel.swift; sourceTree = "<group>"; };
-		4E508868535D6CCDB150506C /* outlook_mailcart.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = outlook_mailcart.hpp; sourceTree = "<group>"; };
+		4252C603FCBC3EB0ABA852F4 /* mailcart.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = mailcart.hpp; sourceTree = "<group>"; };
 		6C7302C2A768541C9DBEABD7 /* OutlookClientBridge.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = OutlookClientBridge.mm; sourceTree = "<group>"; };
 		834D0898A5512479035856D1 /* OutlookMailApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OutlookMailApp.swift; sourceTree = "<group>"; };
+		8687E1476F9FCA6B9B9FC798 /* mailcart.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = mailcart.cpp; sourceTree = "<group>"; };
 		9EA93202CB72324DD42153CB /* outlook_client.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = outlook_client.hpp; sourceTree = "<group>"; };
 		AC6720ADCE9856AA06C0E0E7 /* OutlookClientBridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = OutlookClientBridge.h; sourceTree = "<group>"; };
-		E78544E6716E4A627EB0E052 /* mailcart.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = mailcart.cpp; sourceTree = "<group>"; };
+		C0412166018377C2D1673739 /* outlook_mailcart.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = outlook_mailcart.cpp; sourceTree = "<group>"; };
+		ED0AF609BC97F0D1DFE9ABE3 /* outlook_mailcart.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = outlook_mailcart.hpp; sourceTree = "<group>"; };
 		F1819FB2AD2FB9B7D50D33C8 /* OutlookMailContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OutlookMailContentView.swift; sourceTree = "<group>"; };
 		F22FB61B637E64BD23B3CED7 /* mime_content.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = mime_content.cpp; sourceTree = "<group>"; };
 		F58A57CD9E0C1E422C3FF247 /* OutlookBridgeModels.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = OutlookBridgeModels.h; sourceTree = "<group>"; };
@@ -63,10 +63,10 @@
 		11778CE5A6F30BBC9F8ADBAF /* include */ = {
 			isa = PBXGroup;
 			children = (
-				237F087A68BA7DFFFF5064A2 /* mailcart.hpp */,
+				4252C603FCBC3EB0ABA852F4 /* mailcart.hpp */,
 				02F0151B46D6D804E807989A /* mime_content.hpp */,
 				9EA93202CB72324DD42153CB /* outlook_client.hpp */,
-				4E508868535D6CCDB150506C /* outlook_mailcart.hpp */,
+				ED0AF609BC97F0D1DFE9ABE3 /* outlook_mailcart.hpp */,
 			);
 			path = include;
 			sourceTree = "<group>";
@@ -74,10 +74,10 @@
 		1524191E8CA58FA48057B101 /* src */ = {
 			isa = PBXGroup;
 			children = (
-				E78544E6716E4A627EB0E052 /* mailcart.cpp */,
+				8687E1476F9FCA6B9B9FC798 /* mailcart.cpp */,
 				F22FB61B637E64BD23B3CED7 /* mime_content.cpp */,
 				FB102209B9A8F39CD7FC3A4A /* outlook_client.cpp */,
-				1FF749EFE0DB2EE5FBA3D74E /* outlook_mailcart.cpp */,
+				C0412166018377C2D1673739 /* outlook_mailcart.cpp */,
 			);
 			path = src;
 			sourceTree = "<group>";
@@ -190,10 +190,10 @@
 				488E2CB4F9BF4B5B30A67247 /* OutlookMailApp.swift in Sources */,
 				02411B184BBA10028BBD3D74 /* OutlookMailContentView.swift in Sources */,
 				987C3F5DF66638D38FA5CA7B /* OutlookMailViewModel.swift in Sources */,
-				B0A8F8D1811CD834F7B78BE4 /* mailcart.cpp in Sources */,
+				95EF99D370D3B153BE411C64 /* mailcart.cpp in Sources */,
 				D40BDA569F369BFB9AEC640D /* mime_content.cpp in Sources */,
 				9427F19B4BCA758205DCBE9D /* outlook_client.cpp in Sources */,
-				43C532233D5191DD574C562A /* outlook_mailcart.cpp in Sources */,
+				36F81740D664C322739548E3 /* outlook_mailcart.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
