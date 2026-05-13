@@ -172,9 +172,110 @@ ensure_sast_tooling() {
     #R060: Emit explicit phase status for each SAST prerequisite tool.
     echo ""
     ensure_brew_formula "shellcheck"
-    ensure_brew_formula "semgrep"
+    ensure_semgrep_freshness
     ensure_clang_tidy
     ensure_brew_formula "gitleaks"
+}
+
+ensure_semgrep_freshness() {
+    #R075: Ensure rerunning installer upgrades semgrep when outdated.
+    #R060: Emit explicit semgrep status for check/install/upgrade phases.
+    local outdated_output=""
+    local semgrep_version=""
+    local latest_semgrep_version=""
+    local preferred_python=""
+    local preferred_semgrep=""
+    local resolved_semgrep=""
+
+    echo "[semgrep] Checking..."
+
+    resolved_semgrep="$(command -v semgrep 2>/dev/null || true)"
+    if [[ -n "${VIRTUAL_ENV:-}" ]] && [[ -x "${VIRTUAL_ENV}/bin/python" ]] && [[ -n "$resolved_semgrep" ]] && [[ "$resolved_semgrep" == "${VIRTUAL_ENV}/bin/"* ]]; then
+        preferred_python="${VIRTUAL_ENV}/bin/python"
+    fi
+
+    if [[ -n "$preferred_python" ]]; then
+        preferred_semgrep="$(dirname "$preferred_python")/semgrep"
+        semgrep_version="$("$preferred_semgrep" show version 2>/dev/null || "$preferred_semgrep" --version 2>/dev/null || true)"
+        semgrep_version="${semgrep_version%%$'\n'*}"
+        latest_semgrep_version="$("$preferred_python" - <<'PY' || true
+import json
+import os
+import urllib.request
+
+override = os.environ.get("SEMGREP_LATEST_VERSION", "").strip()
+if override:
+    print(override)
+    raise SystemExit(0)
+
+with urllib.request.urlopen("https://pypi.org/pypi/semgrep/json", timeout=10) as response:
+    payload = json.loads(response.read().decode("utf-8"))
+
+print(str(payload.get("info", {}).get("version", "")).strip())
+PY
+)"
+
+        if [[ ! -x "$preferred_semgrep" ]]; then
+            echo "⚠️  [semgrep] Missing in project virtualenv; installing via pip..."
+            "$preferred_python" -m pip install --upgrade semgrep
+        elif [[ -n "$semgrep_version" ]] && [[ -n "$latest_semgrep_version" ]] && "$preferred_python" - "$semgrep_version" "$latest_semgrep_version" <<'PY'
+import re
+import sys
+
+def normalize(version: str):
+    return tuple(int(token) for token in re.split(r"[^0-9]+", version) if token)
+
+current = sys.argv[1].strip()
+latest = sys.argv[2].strip()
+raise SystemExit(0 if normalize(latest) > normalize(current) else 1)
+PY
+        then
+            echo "⚠️  [semgrep] Outdated in project virtualenv; upgrading via pip..."
+            "$preferred_python" -m pip install --upgrade semgrep
+        fi
+
+        if [[ ! -x "$preferred_semgrep" ]]; then
+            echo "❌ [semgrep] Project virtualenv install completed but semgrep is still missing"
+            exit 1
+        fi
+
+        semgrep_version="$("$preferred_semgrep" show version 2>/dev/null || "$preferred_semgrep" --version 2>/dev/null || true)"
+        semgrep_version="${semgrep_version%%$'\n'*}"
+        if [[ -n "$semgrep_version" ]]; then
+            echo "✅ [semgrep] Available in project virtualenv (version ${semgrep_version})"
+        else
+            echo "✅ [semgrep] Available in project virtualenv"
+        fi
+    else
+        if ! command -v semgrep >/dev/null 2>&1; then
+            echo "⚠️  [semgrep] Missing; installing with Homebrew..."
+            brew install semgrep
+        fi
+
+        if ! command -v semgrep >/dev/null 2>&1; then
+            echo "❌ [semgrep] Install completed but command is still missing"
+            exit 1
+        fi
+
+        outdated_output="$(brew outdated --formula semgrep 2>/dev/null || true)"
+        if [[ "$outdated_output" == *"semgrep"* ]]; then
+            echo "⚠️  [semgrep] Outdated; upgrading with Homebrew..."
+            brew upgrade semgrep
+        fi
+
+        if ! command -v semgrep >/dev/null 2>&1; then
+            echo "❌ [semgrep] Upgrade completed but command is still missing"
+            exit 1
+        fi
+
+        semgrep_version="$(semgrep show version 2>/dev/null || semgrep --version 2>/dev/null || true)"
+        semgrep_version="${semgrep_version%%$'\n'*}"
+        if [[ -n "$semgrep_version" ]]; then
+            echo "✅ [semgrep] Available on PATH (version ${semgrep_version})"
+        else
+            echo "✅ [semgrep] Available on PATH"
+        fi
+    fi
 }
 
 ensure_1psa() {

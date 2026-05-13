@@ -64,6 +64,12 @@ if [ "$1" = "--prefix" ] && [ "$2" = "llvm" ]; then
   echo "${STUB_BIN}/opt/llvm"
   exit 0
 fi
+if [ "$1" = "outdated" ] && [ "$2" = "--formula" ] && [ "$3" = "semgrep" ]; then
+  if [ "${BREW_SEMGREP_OUTDATED:-0}" -ne 0 ]; then
+    echo "semgrep"
+  fi
+  exit 0
+fi
 if [ "$1" = "install" ]; then
   FORMULA="$2"
   printf "install %s\n" "${FORMULA}" >> "${BREW_LOG}"
@@ -83,9 +89,63 @@ INNER
   chmod +x "${STUB_BIN}/${FORMULA}"
   exit 0
 fi
+if [ "$1" = "upgrade" ]; then
+  FORMULA="$2"
+  printf "upgrade %s\n" "${FORMULA}" >> "${BREW_LOG}"
+  cat > "${STUB_BIN}/${FORMULA}" <<'INNER'
+#!/bin/bash
+if [ "$1" = "show" ] && [ "$2" = "version" ]; then
+  echo "1.999.0"
+  exit 0
+fi
+if [ "$1" = "--version" ]; then
+  echo "1.999.0"
+  exit 0
+fi
+exit 0
+INNER
+  chmod +x "${STUB_BIN}/${FORMULA}"
+  exit 0
+fi
 exit 0
 EOF
   chmod +x "${STUB_BIN}/brew"
+}
+
+create_virtualenv_python_stub() {
+  cat > "${STUB_BIN}/python-venv-stub" <<'EOF'
+#!/bin/bash
+if [ "$1" = "-m" ] && [ "$2" = "pip" ] && [ "$3" = "install" ] && [ "$4" = "--upgrade" ] && [ "$5" = "semgrep" ]; then
+  printf "%s %s %s %s %s\n" "$1" "$2" "$3" "$4" "$5" >> "${PIP_LOG}"
+  cat > "${VIRTUAL_ENV}/bin/semgrep" <<'INNER'
+#!/bin/bash
+if [ "$1" = "show" ] && [ "$2" = "version" ]; then
+  echo "1.162.0"
+  exit 0
+fi
+if [ "$1" = "--version" ]; then
+  echo "1.162.0"
+  exit 0
+fi
+exit 0
+INNER
+  chmod +x "${VIRTUAL_ENV}/bin/semgrep"
+  exit 0
+fi
+
+if [ "$1" = "-" ] && [ "$#" -eq 1 ]; then
+  echo "${SEMGREP_LATEST_VERSION:-1.162.0}"
+  exit 0
+fi
+
+if [ "$1" = "-" ]; then
+  /usr/bin/python3 "$@"
+  exit $?
+fi
+
+exit 1
+EOF
+  chmod +x "${STUB_BIN}/python-venv-stub"
 }
 
 create_git_stub_for_1psa_clone() {
@@ -243,6 +303,68 @@ EOF
   run rg "^install gitleaks$" "${TMP_ROOT}/brew.log" --count
   [ "$status" -eq 0 ]
   [ "${output}" = "1" ]
+}
+
+@test "R075: rerunning installer upgrades semgrep when Homebrew reports it outdated" {
+  #R075
+  create_common_toolchain_stubs
+  create_brew_stub
+  create_1psa_available_stub
+  cat > "${STUB_BIN}/semgrep" <<'EOF'
+#!/bin/bash
+if [ "$1" = "show" ] && [ "$2" = "version" ]; then
+  echo "1.157.0"
+  exit 0
+fi
+if [ "$1" = "--version" ]; then
+  echo "1.157.0"
+  exit 0
+fi
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/semgrep"
+
+  run env PATH="${STUB_BIN}:/usr/bin:/bin" BREW_LOG="${TMP_ROOT}/brew.log" STUB_BIN="${STUB_BIN}" BREW_SEMGREP_OUTDATED=1 bash "${SCRIPT_PATH}"
+  [ "$status" -eq 0 ]
+  [[ "${output}" == *"[semgrep] Outdated; upgrading with Homebrew..."* ]]
+  run rg "^upgrade semgrep$" "${TMP_ROOT}/brew.log"
+  [ "$status" -eq 0 ]
+}
+
+@test "R075: rerunning installer upgrades semgrep in active virtualenv when outdated" {
+  #R075
+  local venv_dir="${TMP_ROOT}/venv"
+  mkdir -p "${venv_dir}/bin"
+  create_common_toolchain_stubs
+  create_brew_stub
+  create_1psa_available_stub
+  create_virtualenv_python_stub
+
+  cat > "${venv_dir}/bin/python" <<'EOF'
+#!/bin/bash
+"${STUB_BIN}/python-venv-stub" "$@"
+EOF
+  chmod +x "${venv_dir}/bin/python"
+
+  cat > "${venv_dir}/bin/semgrep" <<'EOF'
+#!/bin/bash
+if [ "$1" = "show" ] && [ "$2" = "version" ]; then
+  echo "1.157.0"
+  exit 0
+fi
+if [ "$1" = "--version" ]; then
+  echo "1.157.0"
+  exit 0
+fi
+exit 0
+EOF
+  chmod +x "${venv_dir}/bin/semgrep"
+
+  run env PATH="${venv_dir}/bin:${STUB_BIN}:/usr/bin:/bin" BREW_LOG="${TMP_ROOT}/brew.log" PIP_LOG="${TMP_ROOT}/pip.log" STUB_BIN="${STUB_BIN}" VIRTUAL_ENV="${venv_dir}" SEMGREP_LATEST_VERSION=1.162.0 bash "${SCRIPT_PATH}"
+  [ "$status" -eq 0 ]
+  [[ "${output}" == *"[semgrep] Outdated in active virtualenv; upgrading via pip..."* ]]
+  run rg "^-m pip install --upgrade semgrep$" "${TMP_ROOT}/pip.log"
+  [ "$status" -eq 0 ]
 }
 
 @test "R045,R050: installs 1psa from source when missing" {

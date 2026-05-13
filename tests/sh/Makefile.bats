@@ -3,6 +3,7 @@
 setup() {
   export REPO_ROOT="/Users/phil/local/src/mailcart"
   export MAKEFILE_PATH="${REPO_ROOT}/Makefile"
+  export SWIFTLINT_CONFIG_PATH="${REPO_ROOT}/.swiftlint.yml"
   export TMP_ROOT
   TMP_ROOT="$(mktemp -d)"
   export SANDBOX="${TMP_ROOT}/sandbox"
@@ -10,6 +11,7 @@ setup() {
   export TEST_LOG="${TMP_ROOT}/commands.log"
   mkdir -p "${SANDBOX}" "${STUB_BIN}"
   cp "${MAKEFILE_PATH}" "${SANDBOX}/Makefile"
+  cp "${SWIFTLINT_CONFIG_PATH}" "${SANDBOX}/.swiftlint.yml"
   : > "${TEST_LOG}"
 }
 
@@ -181,12 +183,108 @@ printf "clang-tidy %s\n" "$*" >> "${TEST_LOG}"
 if [ "${CLANG_TIDY_EMIT_ERROR:-0}" -ne 0 ]; then
   echo "fake.cpp:1:1: error: simulated blocking finding [bugprone-test,-warnings-as-errors]"
 fi
+if [ "${CLANG_TIDY_SUPPRESSED_WARNINGS:-0}" -ne 0 ]; then
+  echo "Suppressed 1 warnings (1 NOLINT)."
+fi
 if [ "${CLANG_TIDY_EXIT_CODE:-0}" -ne 0 ]; then
   exit "${CLANG_TIDY_EXIT_CODE}"
 fi
 exit 0
 EOF
   chmod +x "${STUB_BIN}/clang-tidy"
+}
+
+create_ruff_stub() {
+  cat > "${STUB_BIN}/ruff" <<'EOF'
+#!/bin/bash
+printf "ruff %s\n" "$*" >> "${TEST_LOG}"
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/ruff"
+}
+
+create_swiftlint_stub() {
+  cat > "${STUB_BIN}/swiftlint" <<'EOF'
+#!/bin/bash
+printf "swiftlint %s\n" "$*" >> "${TEST_LOG}"
+if [ "${SWIFTLINT_EMIT_WARNING:-0}" -ne 0 ]; then
+  echo "warning: simulated swiftlint warning finding"
+  if [ "$1" = "lint" ] && [ "$2" = "--strict" ]; then
+    exit 2
+  fi
+fi
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/swiftlint"
+}
+
+create_bandit_stub() {
+  cat > "${STUB_BIN}/bandit" <<'EOF'
+#!/bin/bash
+printf "bandit %s\n" "$*" >> "${TEST_LOG}"
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/bandit"
+}
+
+create_detect_secrets_stub() {
+  cat > "${STUB_BIN}/detect-secrets" <<'EOF'
+#!/bin/bash
+printf "detect-secrets %s\n" "$*" >> "${TEST_LOG}"
+if [ "${DETECT_SECRETS_EMIT_MAKEFILE_KEYWORD_FINDINGS:-0}" -ne 0 ]; then
+  echo '{"results":{"Makefile":[{"type":"Secret Keyword","line_number":335},{"type":"Secret Keyword","line_number":346}]}}'
+elif [ "${DETECT_SECRETS_EMIT_FINDINGS:-0}" -ne 0 ]; then
+  echo '{"results":{"fixture.py":[{"type":"Secret Keyword","line_number":1}]}}'
+else
+  echo '{"results":{}}'
+fi
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/detect-secrets"
+}
+
+create_git_ls_files_stub() {
+  cat > "${STUB_BIN}/git" <<'EOF'
+#!/bin/bash
+if [ "$1" = "ls-files" ]; then
+  printf "Makefile\n"
+  printf "00_verify_requirements_traceability.sh\n"
+  printf "01_install_prerequisites.sh\n"
+  exit 0
+fi
+exit 1
+EOF
+  chmod +x "${STUB_BIN}/git"
+}
+
+create_clamscan_stub() {
+  cat > "${STUB_BIN}/clamscan" <<'EOF'
+#!/bin/bash
+printf "clamscan %s\n" "$*" >> "${TEST_LOG}"
+infected="${CLAMSCAN_STUB_INFECTED_FILES:-0}"
+log_path=""
+for arg in "$@"; do
+  case "$arg" in
+    --log=*)
+      log_path="${arg#--log=}"
+      ;;
+  esac
+done
+summary="$(cat <<INNER
+----------- SCAN SUMMARY -----------
+Infected files: ${infected}
+INNER
+)"
+printf "%s\n" "$summary"
+if [ -n "$log_path" ]; then
+  printf "%s\n" "$summary" > "$log_path"
+fi
+if [ "${infected}" -gt 0 ]; then
+  exit 1
+fi
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/clamscan"
 }
 
 create_gitleaks_stub() {
@@ -201,6 +299,10 @@ EOF
 create_python3_stub() {
   cat > "${STUB_BIN}/python3" <<'EOF'
 #!/bin/bash
+if [ "$1" = "-c" ]; then
+  /usr/bin/python3 "$@"
+  exit $?
+fi
 printf "python3 %s\n" "$*" >> "${TEST_LOG}"
 exit 0
 EOF
@@ -211,59 +313,48 @@ EOF
   #R001
   run_make help
   [ "$status" -eq 0 ]
-  [[ "${output}" == *"make 00"* ]]
   [[ "${output}" == *"make lint"* ]]
   [[ "${output}" == *"make build"* ]]
   [[ "${output}" == *"make test"* ]]
   [[ "${output}" == *"make ui-test"* ]]
   [[ "${output}" == *"make crash"* ]]
-  [[ "${output}" == *"make verify-crash"* ]]
   [[ "${output}" == *"make run-ui"* ]]
   [[ "${output}" == *"make sast"* ]]
-  [[ "${output}" == *"make matchy-mailcart-api"* ]]
-  [[ "${output}" == *"make run-matchy-api"* ]]
+  [[ "${output}" == *"make clam"* ]]
+  [[ "${output}" == *"make run-api"* ]]
   [[ "${output}" == *"make clean"* ]]
 }
 
-@test "R105: make 00 runs repository traceability verifier script" {
-  #R105
-  cat > "${SANDBOX}/00_verify_requirements_traceability.sh" <<'EOF'
-#!/bin/bash
-printf "traceability-script-ran\n" >> "${TEST_LOG}"
-exit 0
-EOF
-  chmod +x "${SANDBOX}/00_verify_requirements_traceability.sh"
-  run_make 00
-  [ "$status" -eq 0 ]
-  run rg "^traceability-script-ran$" "${TEST_LOG}"
-  [ "$status" -eq 0 ]
-}
-
-@test "R045,R050,R055,R060,R065: sast runs shell, semgrep, clang-tidy, and secret scanning" {
-  #R045 #R050 #R055 #R060 #R065
+@test "R045,R050,R055,R065,R115,R120: sast runs shell, semgrep, bandit, detect-secrets, and gitleaks" {
+  #R045 #R050 #R055 #R065 #R115 #R120
   create_shellcheck_stub
   create_semgrep_stub
-  create_clang_tidy_stub
+  create_bandit_stub
+  create_detect_secrets_stub
+  create_git_ls_files_stub
   create_gitleaks_stub
-  create_xcrun_stub
   : > "${SANDBOX}/00_verify_requirements_traceability.sh"
   : > "${SANDBOX}/01_install_prerequisites.sh"
 
   run_make sast
   [ "$status" -eq 0 ]
-  [[ "${output}" == *"SAST checks completed."* ]]
+  [[ "${output}" == *"✅ SAST checks completed with no findings."* ]]
   run rg "^shellcheck argc=2 " "${TEST_LOG}"
   [ "$status" -eq 0 ]
   run rg "\\[01_install_prerequisites.sh\\]" "${TEST_LOG}"
   [ "$status" -eq 0 ]
   run rg "\\[00_verify_requirements_traceability.sh\\]" "${TEST_LOG}"
   [ "$status" -eq 0 ]
-  run rg "^semgrep +--config auto --config \.semgrep.yml --error --quiet \.$" "${TEST_LOG}"
+  run rg "^semgrep +scan --config auto --config \.semgrep.yml --error \.$" "${TEST_LOG}"
   [ "$status" -eq 0 ]
-  run rg "^clang-tidy +--config-file=.clang-tidy +cpp_core/src/mailcart.cpp" "${TEST_LOG}"
+  run rg "^bandit +-q +-r scripts +-x mailcart-venv,.venv,venv,build,dist$" "${TEST_LOG}"
   [ "$status" -eq 0 ]
-  run rg "^xcrun +--sdk macosx .*/clang-tidy .*--config-file=.clang-tidy .*macos_app/Bridge/OutlookClientBridge.mm" "${TEST_LOG}"
+  run rg "^detect-secrets +scan .+" "${TEST_LOG}"
   [ "$status" -eq 0 ]
+  run rg "^detect-secrets +scan .*Makefile" "${TEST_LOG}"
+  [ "$status" -eq 0 ]
+  run rg "^detect-secrets +scan .*--all-files" "${TEST_LOG}"
+  [ "$status" -ne 0 ]
   run rg "^gitleaks +detect --source \. --config \.gitleaks.toml --no-banner --redact --exit-code 1$" "${TEST_LOG}"
   [ "$status" -eq 0 ]
 }
@@ -272,27 +363,35 @@ EOF
   #R085
   create_shellcheck_stub
   create_semgrep_stub
-  create_clang_tidy_stub
+  create_bandit_stub
+  create_detect_secrets_stub
+  create_git_ls_files_stub
   create_gitleaks_stub
-  create_xcrun_stub
   : > "${SANDBOX}/00_verify_requirements_traceability.sh"
   : > "${SANDBOX}/01_install_prerequisites.sh"
 
   run_make sast
   [ "$status" -eq 0 ]
-  [[ "${output}" == *"┌──── ShellCheck ────┐"* ]]
-  [[ "${output}" == *"┌──── Semgrep ────┐"* ]]
-  [[ "${output}" == *"┌──── clang-tidy ────┐"* ]]
-  [[ "${output}" == *"┌──── gitleaks ────┐"* ]]
+  [[ "${output}" == *"Security Tool: ShellCheck"* ]]
+  [[ "${output}" == *"Security Tool: Semgrep"* ]]
+  [[ "${output}" == *"Security Tool: Bandit"* ]]
+  [[ "${output}" == *"Security Tool: detect-secrets"* ]]
+  [[ "${output}" == *"Security Tool: Gitleaks"* ]]
+  [[ "${output}" == *"URL: https://www.shellcheck.net/"* ]]
+  [[ "${output}" == *"URL: https://semgrep.dev/docs/"* ]]
+  [[ "${output}" == *"URL: https://bandit.readthedocs.io/"* ]]
+  [[ "${output}" == *"URL: https://github.com/Yelp/detect-secrets"* ]]
+  [[ "${output}" == *"URL: https://github.com/gitleaks/gitleaks"* ]]
 }
 
 @test "R090: sast prints per-tool running notifications before each security tool" {
   #R090
   create_shellcheck_stub
   create_semgrep_stub
-  create_clang_tidy_stub
+  create_bandit_stub
+  create_detect_secrets_stub
+  create_git_ls_files_stub
   create_gitleaks_stub
-  create_xcrun_stub
   : > "${SANDBOX}/00_verify_requirements_traceability.sh"
   : > "${SANDBOX}/01_install_prerequisites.sh"
 
@@ -300,35 +399,125 @@ EOF
   [ "$status" -eq 0 ]
   [[ "${output}" == *"▶ Running ShellCheck..."* ]]
   [[ "${output}" == *"▶ Running Semgrep..."* ]]
-  [[ "${output}" == *"▶ Running clang-tidy..."* ]]
+  [[ "${output}" == *"▶ Running Bandit..."* ]]
+  [[ "${output}" == *"▶ Running detect-secrets..."* ]]
   [[ "${output}" == *"▶ Running gitleaks..."* ]]
 }
 
-@test "R070,R075: sast-report runs non-blocking clang-tidy report config" {
-  #R070 #R075
+@test "R060,R070,R125,R126: lint runs blocking clang-tidy checks and emits success marker" {
+  #R060 #R070 #R125 #R126
   create_clang_tidy_stub
   create_xcrun_stub
-  run env PATH="${STUB_BIN}:/usr/bin:/bin" CLANG_TIDY_EXIT_CODE=1 make -C "${SANDBOX}" sast-report
+  create_swiftlint_stub
+  create_ruff_stub
+  run env PATH="${STUB_BIN}:/usr/bin:/bin" make -C "${SANDBOX}" lint
   [ "$status" -eq 0 ]
-  [[ "${output}" == *"SAST report checks completed."* ]]
-  run rg "^clang-tidy +--config-file=.clang-tidy.report +cpp_core/src/mailcart.cpp" "${TEST_LOG}"
+  [[ "${output}" == *"✅ lint checks completed with no findings."* ]]
+  run rg "^clang-tidy +--config-file=.clang-tidy +cpp_core/src/mailcart.cpp" "${TEST_LOG}"
   [ "$status" -eq 0 ]
-  run rg "^xcrun +--sdk macosx .*/clang-tidy .*--config-file=.clang-tidy.report .*macos_app/Bridge/OutlookClientBridge.mm" "${TEST_LOG}"
+  run rg "^xcrun +--sdk macosx .*/clang-tidy .*--config-file=.clang-tidy .*macos_app/Bridge/OutlookClientBridge.mm" "${TEST_LOG}"
+  [ "$status" -eq 0 ]
+  run rg '^swiftlint +lint --strict --config \.swiftlint\.yml$' "${TEST_LOG}"
+  [ "$status" -eq 0 ]
+  run rg "^ruff +check \.$" "${TEST_LOG}"
   [ "$status" -eq 0 ]
 }
 
-@test "R060: sast fails when blocking clang-tidy findings are present" {
-  #R060
+@test "R125: lint fails with red X when swiftlint reports warning findings" {
+  #R125
+  create_clang_tidy_stub
+  create_xcrun_stub
+  create_swiftlint_stub
+  create_ruff_stub
+  run env PATH="${STUB_BIN}:/usr/bin:/bin" SWIFTLINT_EMIT_WARNING=1 make -C "${SANDBOX}" lint
+  [ "$status" -ne 0 ]
+  [[ "${output}" == *"warning: simulated swiftlint warning finding"* ]]
+  [[ "${output}" == *"❌ lint checks completed with findings or failures."* ]]
+}
+
+@test "R125: swiftlint config excludes generated dependency source trees" {
+  #R125
+  run rg '^excluded:$' "${SANDBOX}/.swiftlint.yml"
+  [ "$status" -eq 0 ]
+  run rg '^\s*-\s+\.build$' "${SANDBOX}/.swiftlint.yml"
+  [ "$status" -eq 0 ]
+  run rg '^\s*-\s+"\*\*/DerivedData"$' "${SANDBOX}/.swiftlint.yml"
+  [ "$status" -eq 0 ]
+  run rg '^\s*-\s+"\*\*/SourcePackages"$' "${SANDBOX}/.swiftlint.yml"
+  [ "$status" -eq 0 ]
+}
+
+@test "R045,R120: sast fails and prints red X when detect-secrets finds secrets" {
+  #R045 #R120
   create_shellcheck_stub
   create_semgrep_stub
-  create_clang_tidy_stub
+  create_bandit_stub
+  create_detect_secrets_stub
+  create_git_ls_files_stub
   create_gitleaks_stub
-  create_xcrun_stub
-  : > "${SANDBOX}/00_verify_requirements_traceability.sh"
-  : > "${SANDBOX}/01_install_prerequisites.sh"
-  run env PATH="${STUB_BIN}:/usr/bin:/bin" CLANG_TIDY_EMIT_ERROR=1 make -C "${SANDBOX}" sast
+  run env PATH="${STUB_BIN}:/usr/bin:/bin" DETECT_SECRETS_EMIT_FINDINGS=1 make -C "${SANDBOX}" sast
   [ "$status" -ne 0 ]
-  [[ "${output}" == *"clang-tidy blocking findings detected."* ]]
+  [[ "${output}" == *"detect-secrets findings detected."* ]]
+  [[ "${output}" == *"❌ SAST checks completed with findings or failures."* ]]
+}
+
+@test "R135: sast ignores detect-secrets keyword-only findings in Makefile" {
+  #R135
+  create_shellcheck_stub
+  create_semgrep_stub
+  create_bandit_stub
+  create_detect_secrets_stub
+  create_git_ls_files_stub
+  create_gitleaks_stub
+  run env PATH="${STUB_BIN}:/usr/bin:/bin" DETECT_SECRETS_EMIT_MAKEFILE_KEYWORD_FINDINGS=1 make -C "${SANDBOX}" sast
+  [ "$status" -eq 0 ]
+  [[ "${output}" == *"✅ SAST checks completed with no findings."* ]]
+}
+
+@test "R060: lint fails with red X when clang-tidy reports suppressed warnings" {
+  #R060
+  create_clang_tidy_stub
+  create_xcrun_stub
+  create_swiftlint_stub
+  create_ruff_stub
+  run env PATH="${STUB_BIN}:/usr/bin:/bin" CLANG_TIDY_SUPPRESSED_WARNINGS=1 make -C "${SANDBOX}" lint
+  [ "$status" -ne 0 ]
+  [[ "${output}" == *"clang-tidy suppressed warnings detected."* ]]
+  [[ "${output}" == *"❌ lint checks completed with findings or failures."* ]]
+}
+
+@test "R075: clang-tidy uses blocking config for lint lane" {
+  #R075
+  create_clang_tidy_stub
+  create_xcrun_stub
+  create_swiftlint_stub
+  create_ruff_stub
+  run env PATH="${STUB_BIN}:/usr/bin:/bin" make -C "${SANDBOX}" lint
+  [ "$status" -eq 0 ]
+  run rg "^clang-tidy +--config-file=.clang-tidy +cpp_core/src/mailcart.cpp" "${TEST_LOG}"
+  [ "$status" -eq 0 ]
+  run rg "^xcrun +--sdk macosx .*/clang-tidy .*--config-file=.clang-tidy .*macos_app/Bridge/OutlookClientBridge.mm" "${TEST_LOG}"
+  [ "$status" -eq 0 ]
+}
+
+@test "R130: make clam runs ClamAV recursively on repository" {
+  #R130
+  create_clamscan_stub
+  run_make clam
+  [ "$status" -eq 0 ]
+  [[ "${output}" == *"Infected files: 0"* ]]
+  [[ "${output}" == *"✅ clam scan completed with no findings."* ]]
+  run rg "^clamscan +-r \. +--log=.+" "${TEST_LOG}"
+  [ "$status" -eq 0 ]
+}
+
+@test "R140: make clam prints red X when infected files are found" {
+  #R140
+  create_clamscan_stub
+  run env PATH="${STUB_BIN}:/usr/bin:/bin" CLAMSCAN_STUB_INFECTED_FILES=2 make -C "${SANDBOX}" clam
+  [ "$status" -ne 0 ]
+  [[ "${output}" == *"Infected files: 2"* ]]
+  [[ "${output}" == *"❌ clam scan completed with findings or failures."* ]]
 }
 
 @test "R005: test target runs C++ integration and non-UI shell tests" {
@@ -350,8 +539,8 @@ EOF
 
 @test "R010,R015,R020,R025: build runs bridge check, typecheck, and app rebuild/reuse flow" {
   #R010 #R015 #R020 #R025
-  local app_bundle="${SANDBOX}/app/OutlookMailApp.app"
-  local app_executable="${app_bundle}/Contents/MacOS/OutlookMailApp"
+  local app_bundle="${SANDBOX}/app/Mailcart.app"
+  local app_executable="${app_bundle}/Contents/MacOS/Mailcart"
   create_all_stubs
 
   run_make build APP_BUNDLE="${app_bundle}" APP_EXECUTABLE="${app_executable}" PROJECT_FILE="${SANDBOX}/Generated.xcodeproj" UI_BUILD_DIR="${SANDBOX}/ui" DERIVED_DATA="${SANDBOX}/ui/DerivedData"
@@ -382,7 +571,7 @@ EOF
 
 @test "R030: run resolves graph token via 1psa and launches app executable" {
   #R030
-  local app_bundle="${SANDBOX}/app/OutlookMailApp.app"
+  local app_bundle="${SANDBOX}/app/Mailcart.app"
   local app_executable="${STUB_BIN}/app-runner"
   create_all_stubs
   create_1psa_stub
@@ -400,8 +589,8 @@ EOF
 
 @test "R035: ui-test executes UI bats lane and smoke verification" {
   #R035
-  local app_bundle="${SANDBOX}/app/OutlookMailApp.app"
-  local app_executable="${app_bundle}/Contents/MacOS/OutlookMailApp"
+  local app_bundle="${SANDBOX}/app/Mailcart.app"
+  local app_executable="${app_bundle}/Contents/MacOS/Mailcart"
   create_bats_stub
   create_kill_stub
   mkdir -p "${SANDBOX}/tests/sh"
@@ -417,7 +606,7 @@ EOF
   run_make ui-test APP_BUNDLE="${app_bundle}" APP_EXECUTABLE="${app_executable}"
   [ "$status" -eq 0 ]
   [[ "${output}" == *"smoke test passed"* ]]
-  [[ "${output}" == *"Skipping PLCrashReporter smoke verification"* ]]
+  [[ "${output}" != *"Skipping PLCrashReporter smoke verification"* ]]
   run rg "bats tests/sh/UI.bats" "${TEST_LOG}"
   [ "$status" -eq 0 ]
 
@@ -434,8 +623,8 @@ EOF
 
 @test "R080: crash-reporter smoke lane is available directly and through ui-test toggle" {
   #R080
-  local app_bundle="${SANDBOX}/app/OutlookMailApp.app"
-  local app_executable="${app_bundle}/Contents/MacOS/OutlookMailApp"
+  local app_bundle="${SANDBOX}/app/Mailcart.app"
+  local app_executable="${app_bundle}/Contents/MacOS/Mailcart"
   create_bats_stub
   create_kill_stub
   mkdir -p "${SANDBOX}/tests/sh"
@@ -468,13 +657,15 @@ EOF
   [ "$status" -eq 0 ]
 }
 
-@test "R095,R100: make exposes script-backed Matchy and crash alias lanes" {
+@test "R095,R100: make exposes script-backed Matchy API and crash lanes" {
   #R095 #R100 #R030 #R070
-  local app_bundle="${SANDBOX}/app/OutlookMailApp.app"
-  local app_executable="${app_bundle}/Contents/MacOS/OutlookMailApp"
+  local app_bundle="${SANDBOX}/app/Mailcart.app"
+  local app_executable="${app_bundle}/Contents/MacOS/Mailcart"
   create_python3_stub
   create_1psa_stub
   create_clang_tidy_stub
+  create_swiftlint_stub
+  create_ruff_stub
   create_xcrun_stub
   create_ps_stub_alive
   create_kill_stub
@@ -492,17 +683,13 @@ exit 0
 EOF
   chmod +x "${SANDBOX}/scripts/verify_macos_crash_reporter.sh"
 
-  run_make run-matchy-api
-  [ "$status" -eq 0 ]
-  run_make matchy-mailcart-api
+  run_make run-api
   [ "$status" -eq 0 ]
   run rg "^python3 scripts/matchy_mailcart_api.py$" "${TEST_LOG}" --count
   [ "$status" -eq 0 ]
-  [ "${output}" = "2" ]
+  [ "${output}" = "1" ]
 
   run_make verify-macos-crash-reporter APP_BUNDLE="${app_bundle}" APP_EXECUTABLE="${app_executable}"
-  [ "$status" -eq 0 ]
-  run_make verify-crash APP_BUNDLE="${app_bundle}" APP_EXECUTABLE="${app_executable}"
   [ "$status" -eq 0 ]
   run_make crash APP_BUNDLE="${app_bundle}" APP_EXECUTABLE="${app_executable}"
   [ "$status" -eq 0 ]
@@ -514,7 +701,7 @@ EOF
   [ "$status" -eq 0 ]
   run rg "^1psa -f outlook_graph_token password$" "${TEST_LOG}"
   [ "$status" -eq 0 ]
-  run rg "^clang-tidy +--config-file=.clang-tidy.report +cpp_core/src/mailcart.cpp" "${TEST_LOG}"
+  run rg "^clang-tidy +--config-file=.clang-tidy +cpp_core/src/mailcart.cpp" "${TEST_LOG}"
   [ "$status" -eq 0 ]
 }
 

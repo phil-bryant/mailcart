@@ -138,16 +138,18 @@ To include this smoke lane in `make ui-test` runs:
 Use the consolidated SAST lane before opening PRs:
 
 - `make sast`
-- `make sast-report` (optional extended non-blocking clang-tidy diagnostics)
+- `make lint` (blocking clang-tidy, SwiftLint, and Ruff diagnostics)
+- `make clam` (ClamAV recursive repository scan)
 
 `make sast` runs:
 
 - `ShellCheck` for repository shell scripts.
 - `Semgrep` (`auto` plus `.semgrep.yml`) for semantic/static security rules.
-- `clang-tidy` for C++ and bridge Objective-C(++) sources.
+- `Bandit` for Python security checks.
+- `detect-secrets` for secret-pattern scanning with finding-based failure.
 - `gitleaks` for secret scanning with `.gitleaks.toml`.
 
-`make sast-report` runs broader clang-tidy readability/performance/portability checks for cleanup planning without failing the lane.
+`make lint` runs blocking `clang-tidy` checks for C++/bridge Objective-C(++), `swiftlint` for Swift sources, and `ruff` as the Python-equivalent lint lane. Any finding fails the target.
 
 Recommended local verification sequence:
 
@@ -175,7 +177,7 @@ If CI is added later, use the same sequence to keep local and CI checks aligned.
 To provide Matchy-compatible endpoints for search and move:
 
 - Run `python3 scripts/matchy_mailcart_api.py`
-- Or run `make run-matchy-api`
+- Or run `make run-api`
 - Endpoints:
   - `GET /v1/messages/search?query=...&limit=...`
   - `POST /v1/messages/{message_id}/move` with `{ "folder_name": "matchy" }`

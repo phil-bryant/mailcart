@@ -1,4 +1,4 @@
-name: OutlookMailApp
+name: Mailcart
 options:
   deploymentTarget:
     macOS: "13.0"
@@ -17,7 +17,7 @@ packages:
     url: https://github.com/microsoft/plcrashreporter.git
     from: 1.12.0
 targets:
-  OutlookMailApp:
+  Mailcart:
     type: application
     platform: macOS
     dependencies:

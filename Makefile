@@ -1,6 +1,6 @@
 SHELL := /bin/zsh
 
-APP_NAME ?= OutlookMailApp
+APP_NAME ?= Mailcart
 UI_BUILD_DIR ?= .build/ui
 PROJECT_FILE ?= macos_app/$(APP_NAME).xcodeproj
 SCHEME ?= $(APP_NAME)
@@ -14,31 +14,26 @@ OUTLOOK_GRAPH_TOKEN_PSA_FIELD ?= password
 
 .DEFAULT_GOAL := help
 
-.PHONY: help 00 build test ui-test run run-ui run-matchy-api crash crash-reporter-smoke \
-	verify-crash sast sast-report lint clean \
+.PHONY: help build test ui-test run run-ui crash crash-reporter-smoke \
+	sast lint clam clean \
 	_cpp-test _bridge-check _ui-typecheck _ui-build _ui-rebuild _non-ui-tests _ui-smoke \
-	_sast_shell _sast_semgrep _sast_clang_tidy _sast_clang_tidy_report _sast_secrets \
-	verify-macos-crash-reporter matchy-mailcart-api
+	_sast_shell _sast_semgrep _sast_bandit _sast_detect_secrets _sast_clang_tidy _sast_secrets \
+	_lint_swiftlint _lint_python_equivalent \
+	verify-macos-crash-reporter run-api
 
 #R001: Expose discoverable developer entrypoints through a help target.
 help:
 	@echo "Targets:"
-	@echo "  make 00      - Run full requirements/source/test traceability verification"
-	@echo "  make lint    - Run extended clang-tidy report checks"
+	@echo "  make lint    - Run blocking clang-tidy, SwiftLint, and Ruff checks"
+	@echo "  make clam    - Run Clam AntiVirus recursive scan for this repository"
 	@echo "  make build   - Build bridge checks, UI typecheck, and app binary"
+	@echo "  make sast    - Run SAST (ShellCheck, Semgrep, Bandit, detect-secrets, gitleaks)"
 	@echo "  make test    - Run C++ integration test and non-UI ./tests/* tests"
 	@echo "  make ui-test - Run UI BATS tests and app smoke launch check"
-	@echo "  make sast    - Run blocking SAST checks (ShellCheck, Semgrep, clang-tidy, gitleaks)"
 	@echo "  make crash   - Verify PLCrashReporter crash capture and replay flow"
-	@echo "  make verify-crash - Run crash reporter verification"
 	@echo "  make run-ui  - Build and launch macOS app"
-	@echo "  make matchy-mailcart-api - Run Matchy-compatible API"
-	@echo "  make run-matchy-api - Run lightweight API for Matchy search/move calls"
+	@echo "  make run-api - Run Matchy-compatible API"
 	@echo "  make clean   - Remove local build artifacts"
-
-#R105: Expose numbered requirements verification lane through Makefile target.
-00:
-	@bash "./00_verify_requirements_traceability.sh"
 
 #R005: Build all repository deliverables and checks.
 #R010: Build lane includes Objective-C and Objective-C++ bridge compilation checks.
@@ -57,31 +52,111 @@ ui-test: _ui-build
 	@if [ "$${RUN_CRASH_REPORTER_SMOKE_TEST:-false}" = "true" ]; then \
 		echo "▶ Running PLCrashReporter smoke verification..."; \
 		$(MAKE) crash-reporter-smoke; \
-	else \
-		echo "ℹ️  Skipping PLCrashReporter smoke verification (RUN_CRASH_REPORTER_SMOKE_TEST=false)."; \
 	fi
 
-#R045: Expose a consolidated SAST lane for all repository content.
+#R045: Expose a consolidated SAST lane for repository security tools.
 #R085: Print per-tool headers before each blocking SAST tool lane.
 #R090: Print per-tool running notifications before each blocking SAST tool lane.
 sast:
-	@echo "┌──── ShellCheck ────┐"
-	@echo "▶ Running ShellCheck..."
-	@$(MAKE) _sast_shell
-	@echo "┌──── Semgrep ────┐"
-	@echo "▶ Running Semgrep..."
-	@$(MAKE) _sast_semgrep
-	@echo "┌──── clang-tidy ────┐"
-	@echo "▶ Running clang-tidy..."
-	@$(MAKE) _sast_clang_tidy
-	@echo "┌──── gitleaks ────┐"
-	@echo "▶ Running gitleaks..."
-	@$(MAKE) _sast_secrets
-	@echo "SAST checks completed."
+	@set +e; \
+	HAS_FAILURE=0; \
+	echo "+==============================================================================+"; \
+	echo "| Security Tool: ShellCheck                                                   |"; \
+	echo "| Static linting for shell scripts with security and reliability checks.      |"; \
+	echo "| Flags risky shell patterns, quoting bugs, and execution pitfalls.           |"; \
+	echo "| URL: https://www.shellcheck.net/                                            |"; \
+	echo "+==============================================================================+"; \
+	echo "▶ Running ShellCheck..."; \
+	$(MAKE) _sast_shell; \
+	if [ "$$?" -ne 0 ]; then HAS_FAILURE=1; fi; \
+	echo "+==============================================================================+"; \
+	echo "| Security Tool: Semgrep                                                      |"; \
+	echo "| Static pattern-based scanning for security and correctness issues.          |"; \
+	echo "| Uses curated security rules against the repository source tree.             |"; \
+	echo "| URL: https://semgrep.dev/docs/                                              |"; \
+	echo "+==============================================================================+"; \
+	echo "▶ Running Semgrep..."; \
+	$(MAKE) _sast_semgrep; \
+	if [ "$$?" -ne 0 ]; then HAS_FAILURE=1; fi; \
+	echo "+==============================================================================+"; \
+	echo "| Security Tool: Bandit                                                       |"; \
+	echo "| Python-focused security scanner for common code vulnerabilities.            |"; \
+	echo "| Flags insecure usage patterns and risky Python APIs.                        |"; \
+	echo "| URL: https://bandit.readthedocs.io/                                         |"; \
+	echo "+==============================================================================+"; \
+	echo "▶ Running Bandit..."; \
+	$(MAKE) _sast_bandit; \
+	if [ "$$?" -ne 0 ]; then HAS_FAILURE=1; fi; \
+	echo "+==============================================================================+"; \
+	echo "| Security Tool: detect-secrets                                               |"; \
+	echo "| Scans repository files for potential hard-coded secrets.                    |"; \
+	echo "| Detects high-entropy strings and known secret formats.                      |"; \
+	echo "| URL: https://github.com/Yelp/detect-secrets                                 |"; \
+	echo "+==============================================================================+"; \
+	echo "▶ Running detect-secrets..."; \
+	$(MAKE) _sast_detect_secrets; \
+	if [ "$$?" -ne 0 ]; then HAS_FAILURE=1; fi; \
+	echo "+==============================================================================+"; \
+	echo "| Security Tool: Gitleaks                                                     |"; \
+	echo "| Scans repository content for hard-coded secrets and credentials.            |"; \
+	echo "| Detects leaked tokens, keys, and other sensitive data patterns.             |"; \
+	echo "| URL: https://github.com/gitleaks/gitleaks                                   |"; \
+	echo "+==============================================================================+"; \
+	echo "▶ Running gitleaks..."; \
+	$(MAKE) _sast_secrets; \
+	if [ "$$?" -ne 0 ]; then HAS_FAILURE=1; fi; \
+	if [ "$$HAS_FAILURE" -eq 0 ]; then \
+		echo "✅ SAST checks completed with no findings."; \
+	else \
+		echo "❌ SAST checks completed with findings or failures."; \
+		exit 1; \
+	fi
 
-#R070: Expose a non-blocking extended SAST reporting lane.
-sast-report: _sast_clang_tidy_report
-	@echo "SAST report checks completed."
+#R060: Run clang-tidy exclusively through make lint and fail on any findings.
+#R070: Expose blocking lint lane status through make lint.
+lint:
+	@set +e; \
+	HAS_FAILURE=0; \
+	$(MAKE) _sast_clang_tidy; \
+	if [ "$$?" -ne 0 ]; then HAS_FAILURE=1; fi; \
+	$(MAKE) _lint_swiftlint; \
+	if [ "$$?" -ne 0 ]; then HAS_FAILURE=1; fi; \
+	$(MAKE) _lint_python_equivalent; \
+	if [ "$$?" -ne 0 ]; then HAS_FAILURE=1; fi; \
+	if [ "$$HAS_FAILURE" -eq 0 ]; then \
+		echo "✅ lint checks completed with no findings."; \
+	else \
+		echo "❌ lint checks completed with findings or failures."; \
+		exit 1; \
+	fi
+
+#R130: Expose ClamAV repository scan through dedicated make target.
+clam:
+	@if ! command -v clamscan >/dev/null 2>&1; then \
+		echo "clamscan is required for make clam. Install ClamAV to continue."; \
+		exit 1; \
+	fi
+	@set +e; \
+	mkdir -p "$(SAST_REPORT_DIR)"; \
+	CLAM_LOG="$(SAST_REPORT_DIR)/clam-scan.log"; \
+	: > "$$CLAM_LOG"; \
+	clamscan -r . --log="$$CLAM_LOG"; \
+	CLAM_EXIT_CODE="$$?"; \
+	INFECTED_FILES="$$(awk -F':' '/Infected files:/ {gsub(/[[:space:]]/, "", $$2); print $$2; exit}' "$$CLAM_LOG")"; \
+	if [ -z "$$INFECTED_FILES" ]; then \
+		echo "❌ clam scan completed with findings or failures."; \
+		echo "Unable to determine infected file count from clamscan output."; \
+		exit 1; \
+	fi; \
+	if [ "$$INFECTED_FILES" -gt 0 ]; then \
+		echo "❌ clam scan completed with findings or failures."; \
+		exit 1; \
+	fi; \
+	if [ "$$CLAM_EXIT_CODE" -ne 0 ]; then \
+		echo "❌ clam scan completed with findings or failures."; \
+		exit 1; \
+	fi; \
+	echo "✅ clam scan completed with no findings."
 
 #R030: Launch the built app bundle through a dedicated run target.
 run: build
@@ -100,19 +175,13 @@ run: build
 	echo "Launched $(APP_NAME) with Graph token (pid $$APP_PID)."
 
 #R095: Run Matchy-compatible API from scripts path through make entrypoint.
-run-matchy-api:
+run-api:
 	@python3 "scripts/matchy_mailcart_api.py"
 
-#R100: Expose alias entrypoints for crash and Matchy script lanes.
+#R100: Expose stable entrypoints for crash and Matchy script lanes.
 verify-macos-crash-reporter: crash-reporter-smoke
 
-matchy-mailcart-api: run-matchy-api
-
-lint: sast-report
-
 crash: crash-reporter-smoke
-
-verify-crash: verify-macos-crash-reporter
 
 run-ui: run
 
@@ -253,9 +322,56 @@ _sast_semgrep:
 		echo "semgrep is required for make sast. Install semgrep to continue."; \
 		exit 1; \
 	fi
-	@semgrep --config auto --config ".semgrep.yml" --error --quiet .
+	@semgrep scan --config auto --config ".semgrep.yml" --error .
 
-#R060: Run clang-tidy on C++ and bridge Objective-C(++) sources.
+#R125: Run SwiftLint as part of blocking make lint lane.
+_lint_swiftlint:
+	@if ! command -v swiftlint >/dev/null 2>&1; then \
+		echo "swiftlint is required for make lint. Install swiftlint to continue."; \
+		exit 1; \
+	fi
+	@swiftlint lint --strict --config ".swiftlint.yml"
+
+#R126: Run Python-equivalent lint checks as part of make lint lane.
+_lint_python_equivalent:
+	@if ! command -v ruff >/dev/null 2>&1; then \
+		echo "ruff is required for make lint. Install ruff to continue."; \
+		exit 1; \
+	fi
+	@ruff check .
+
+#R115: Run Bandit security checks for first-party repository Python sources.
+_sast_bandit:
+	@if ! command -v bandit >/dev/null 2>&1; then \
+		echo "bandit is required for make sast. Install bandit to continue."; \
+		exit 1; \
+	fi
+	@bandit -q -r "scripts" -x "mailcart-venv,.venv,venv,build,dist"
+
+#R120: Run detect-secrets scan and fail when findings exist.
+#R135: Ignore detect-secrets self-referential keyword findings in Makefile.
+_sast_detect_secrets:
+	@if ! command -v detect-secrets >/dev/null 2>&1; then \
+		echo "detect-secrets is required for make sast. Install detect-secrets to continue."; \
+		exit 1; \
+	fi; \
+	TMP_REPORT="$$(mktemp)"; \
+	TRACKED_FILES="$$(git ls-files 2>/dev/null || true)"; \
+	if [ -n "$$TRACKED_FILES" ]; then \
+		detect-secrets scan $$TRACKED_FILES > "$$TMP_REPORT"; \
+	else \
+		detect-secrets scan --all-files > "$$TMP_REPORT"; \
+	fi; \
+	if python3 -c 'import json,pathlib,sys; payload=json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")); results=payload.get("results",{}) if isinstance(payload,dict) else {}; findings=[(filename,entry) for filename,entries in results.items() if isinstance(entries,list) for entry in entries if isinstance(entry,dict)]; blocking=[(filename,entry) for filename,entry in findings if not (filename=="Makefile" and entry.get("type")=="Secret Keyword")]; [print("{}:{}: {}".format(filename, entry.get("line_number", "?"), entry.get("type", "<unknown>"))) for filename,entry in blocking]; raise SystemExit(1 if blocking else 0)' "$$TMP_REPORT"; then \
+		rm -f "$$TMP_REPORT"; \
+	else \
+		echo "detect-secrets findings detected."; \
+		rm -f "$$TMP_REPORT"; \
+		exit 1; \
+	fi
+
+#R060: Run clang-tidy on C++ and bridge Objective-C(++) sources for make lint.
+#R075: Enforce blocking clang-tidy configuration for lint lane.
 _sast_clang_tidy:
 	@CLANG_TIDY_BIN="$$(command -v clang-tidy 2>/dev/null || true)"; \
 	if [ -z "$$CLANG_TIDY_BIN" ]; then \
@@ -265,7 +381,7 @@ _sast_clang_tidy:
 		fi; \
 	fi; \
 	if [ -z "$$CLANG_TIDY_BIN" ]; then \
-		echo "clang-tidy is required for make sast. Install prerequisites with ./01_install_prerequisites.sh"; \
+		echo "clang-tidy is required for make lint. Install prerequisites with ./01_install_prerequisites.sh"; \
 		exit 1; \
 	fi; \
 	mkdir -p "$(SAST_REPORT_DIR)"; \
@@ -290,40 +406,11 @@ _sast_clang_tidy:
 	if python3 -c 'import pathlib,re,sys; text=pathlib.Path(sys.argv[1]).read_text(encoding="utf-8", errors="replace"); pattern=re.compile(r"error: .*\[[^\]]*-warnings-as-errors[^\]]*\]"); raise SystemExit(0 if pattern.search(text) else 1)' "$$CLANG_TIDY_LOG"; then \
 		echo "clang-tidy blocking findings detected. See $$CLANG_TIDY_LOG."; \
 		exit 1; \
-	fi
-
-#R075: Run non-blocking extended clang-tidy report checks.
-_sast_clang_tidy_report:
-	@CLANG_TIDY_BIN="$$(command -v clang-tidy 2>/dev/null || true)"; \
-	if [ -z "$$CLANG_TIDY_BIN" ]; then \
-		LLVM_PREFIX="$$(brew --prefix llvm 2>/dev/null || true)"; \
-		if [ -n "$$LLVM_PREFIX" ] && [ -x "$$LLVM_PREFIX/bin/clang-tidy" ]; then \
-			CLANG_TIDY_BIN="$$LLVM_PREFIX/bin/clang-tidy"; \
-		fi; \
 	fi; \
-	if [ -z "$$CLANG_TIDY_BIN" ]; then \
-		echo "clang-tidy is required for make sast-report. Install prerequisites with ./01_install_prerequisites.sh"; \
+	if python3 -c 'import pathlib,re,sys; text=pathlib.Path(sys.argv[1]).read_text(encoding="utf-8", errors="replace"); pattern=re.compile(r"Suppressed [1-9][0-9]* warnings"); raise SystemExit(0 if pattern.search(text) else 1)' "$$CLANG_TIDY_LOG"; then \
+		echo "clang-tidy suppressed warnings detected. See $$CLANG_TIDY_LOG."; \
 		exit 1; \
-	fi; \
-	mkdir -p "$(SAST_REPORT_DIR)"; \
-	CLANG_TIDY_LOG="$(SAST_REPORT_DIR)/clang-tidy-report.log"; \
-	: > "$$CLANG_TIDY_LOG"; \
-	CLANG_TIDY_COMMON_FLAGS="--config-file=.clang-tidy.report"; \
-	"$$CLANG_TIDY_BIN" \
-		$$CLANG_TIDY_COMMON_FLAGS \
-		"cpp_core/src/mailcart.cpp" \
-		"cpp_core/src/mime_content.cpp" \
-		"cpp_core/src/outlook_mailcart.cpp" \
-		"cpp_core/src/outlook_client.cpp" \
-		-- -std=c++17 -I"cpp_core/include" 2>&1 | tee -a "$$CLANG_TIDY_LOG" || true; \
-	xcrun --sdk macosx "$$CLANG_TIDY_BIN" \
-		$$CLANG_TIDY_COMMON_FLAGS \
-		"macos_app/Bridge/OutlookClientBridge.mm" \
-		-- -std=c++17 -fobjc-arc -x objective-c++ -I"cpp_core/include" -I"macos_app/Bridge" 2>&1 | tee -a "$$CLANG_TIDY_LOG" || true; \
-	xcrun --sdk macosx "$$CLANG_TIDY_BIN" \
-		$$CLANG_TIDY_COMMON_FLAGS \
-		"macos_app/Bridge/OutlookBridgeModels.m" \
-		-- -fobjc-arc -x objective-c -I"macos_app/Bridge" 2>&1 | tee -a "$$CLANG_TIDY_LOG" || true
+	fi
 
 #R065: Run repository secret scanning through gitleaks.
 _sast_secrets:

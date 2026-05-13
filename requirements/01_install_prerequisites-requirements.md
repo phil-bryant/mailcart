@@ -67,7 +67,7 @@ Tests:
 - Verify success guidance includes default `outlook_graph_token` item and `password` field values.
 
 R055  Statement: Ensure SAST tools required by `make sast` are available.
-Design: Installer verifies/install `shellcheck`, `semgrep`, `clang-tidy`, and `gitleaks` before completion so the SAST lane is runnable after prerequisite setup.
+Design: Installer verifies/install `shellcheck`, `semgrep`, `clang-tidy`, and `gitleaks` before completion so the SAST lane is runnable after prerequisite setup. For Semgrep, installer upgrades the active Semgrep source: use virtualenv `pip` when active `semgrep` resolves inside the current `VIRTUAL_ENV`, otherwise use Homebrew outdated/upgrade flow.
 Tests:
 - Run installer without those tools and verify each required formula install is attempted.
 - Rerun installer and verify already-installed tools are not reinstalled.
@@ -89,9 +89,18 @@ Tests:
 - Simulate missing PATH `clang-tidy` with a valid Homebrew LLVM prefix binary and verify success.
 - Simulate missing PATH `clang-tidy` and missing LLVM prefix binary and verify explicit failure.
 
+R075  Statement: Rerunning installer upgrades Semgrep when outdated.
+Design: Installer upgrades Semgrep through the mechanism that provides the active binary on `PATH`: if `semgrep` resolves to the active `VIRTUAL_ENV`, compare installed/latest PyPI versions and run `python -m pip install --upgrade semgrep` when behind; otherwise check `brew outdated --formula semgrep` and run `brew upgrade semgrep` when Homebrew reports Semgrep outdated.
+Tests:
+- Run installer with Homebrew outdated response including `semgrep` and verify `brew upgrade semgrep` is invoked.
+- Run installer with active virtualenv Semgrep behind latest and verify virtualenv `pip` upgrade is invoked.
+- Run installer with Semgrep not outdated and verify no upgrade is invoked.
+
 ## Changelog
 
 - 2026-05-06: Rewrote prerequisites for this repository (removed copied teller-specific dependencies) and focused on local Homebrew/Xcode/xcodegen readiness.
 - 2026-05-07: Updated final guidance command references for consolidated Make targets.
 - 2026-05-07: Added explicit 1psa bootstrap requirements for real Outlook token retrieval.
 - 2026-05-07: Added SAST prerequisite coverage (`shellcheck`, `semgrep`, `clang-tidy`, `gitleaks`) and `make sast` readiness guidance.
+- 2026-05-12: Added Semgrep-outdated upgrade behavior on rerun (`brew outdated` + `brew upgrade semgrep`).
+- 2026-05-12: Added Semgrep virtualenv freshness handling so reruns upgrade active venv Semgrep via `pip`.

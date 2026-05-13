@@ -9,7 +9,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "$REPO_ROOT"
 
-APP_EXECUTABLE="${APP_EXECUTABLE:-.build/ui/DerivedData/Build/Products/Debug/OutlookMailApp.app/Contents/MacOS/OutlookMailApp}"
+APP_EXECUTABLE="${APP_EXECUTABLE:-.build/ui/DerivedData/Build/Products/Debug/Mailcart.app/Contents/MacOS/Mailcart}"
 CRASH_REPORT_DIR="${CRASH_REPORT_DIR:-${HOME}/Library/Application Support/com.local.outlookmailapp/CrashReports}"
 STARTUP_WAIT_SECONDS="${STARTUP_WAIT_SECONDS:-3}"
 LAUNCH_LOG="$(mktemp)"
@@ -103,7 +103,7 @@ if kill -0 "$APP_PID" >/dev/null 2>&1; then
 else
     wait "$APP_PID" >/dev/null 2>&1 || true
 fi
-pkill -x "OutlookMailApp" >/dev/null 2>&1 || true
+pkill -x "Mailcart" >/dev/null 2>&1 || true
 
 if [[ "$FOUND_SAVE_LOG" != "true" && "$FOUND_FRESH_ARTIFACTS" != "true" ]]; then
     echo "ℹ️  Did not observe persistence log line; validating via artifact timestamps instead."
