@@ -93,7 +93,7 @@ struct OutlookMailContentView: View {
                         ProgressView()
                             .controlSize(.small)
                     } else {
-                        Text("Load more mailcarts")
+                        Text("Load more emails")
                     }
                 })
                 .disabled(viewModel.canLoadMore == false)

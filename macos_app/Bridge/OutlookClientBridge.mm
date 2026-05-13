@@ -149,6 +149,59 @@ namespace
     return parsed;
   }
 
+  NSString *TruncatedResponseBodyText(NSData *response_data)
+  {
+    NSString *body_text = @"";
+    if (response_data != nil && response_data.length > 0)
+    {
+      NSString *decoded = [[NSString alloc] initWithData:response_data encoding:NSUTF8StringEncoding];
+      if (decoded != nil)
+      {
+        body_text = [decoded stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+      }
+    }
+    if (body_text.length > 300)
+    {
+      body_text = [body_text substringToIndex:300];
+    }
+    return body_text;
+  }
+
+  NSData *PerformRequestSynchronously(NSURLRequest *request, NSHTTPURLResponse **http_response, NSError **request_error)
+  {
+    __block NSData *captured_data = nil;
+    __block NSHTTPURLResponse *captured_http_response = nil;
+    __block NSError *captured_error = nil;
+    dispatch_semaphore_t wait_semaphore = dispatch_semaphore_create(0);
+    NSURLSessionConfiguration *configuration = [NSURLSessionConfiguration ephemeralSessionConfiguration];
+    configuration.URLCache = nil;
+    configuration.requestCachePolicy = NSURLRequestReloadIgnoringLocalCacheData;
+    NSURLSession *session = [NSURLSession sessionWithConfiguration:configuration];
+    NSURLSessionDataTask *task =
+        [session dataTaskWithRequest:request
+                   completionHandler:^(NSData *_Nullable data, NSURLResponse *_Nullable response, NSError *_Nullable error) {
+                     captured_data = data;
+                     if ([response isKindOfClass:[NSHTTPURLResponse class]])
+                     {
+                       captured_http_response = (NSHTTPURLResponse *)response;
+                     }
+                     captured_error = error;
+                     dispatch_semaphore_signal(wait_semaphore);
+                   }];
+    [task resume];
+    dispatch_semaphore_wait(wait_semaphore, DISPATCH_TIME_FOREVER);
+    [session finishTasksAndInvalidate];
+    if (http_response != nil)
+    {
+      *http_response = captured_http_response;
+    }
+    if (request_error != nil)
+    {
+      *request_error = captured_error;
+    }
+    return captured_data;
+  }
+
   NSData *FetchGraphGetData(NSURL *url, NSString *token, BOOL binary_accept, NSString **error_text)
   {
     NSData *response_payload = nil;
@@ -171,10 +224,7 @@ namespace
 
       NSHTTPURLResponse *http_response = nil;
       NSError *request_error = nil;
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-      NSData *response_data = [NSURLConnection sendSynchronousRequest:request returningResponse:&http_response error:&request_error];
-#pragma clang diagnostic pop
+      NSData *response_data = PerformRequestSynchronously(request, &http_response, &request_error);
       NSInteger status_code = http_response.statusCode;
       BOOL success = (request_error == nil && response_data != nil && status_code >= 200 && status_code < 300);
       if (success)
@@ -185,11 +235,24 @@ namespace
       {
         if (request_error != nil)
         {
-          resolved_error = [NSString stringWithFormat:@"Graph request failed: %@", request_error.localizedDescription];
+          resolved_error = [NSString stringWithFormat:@"Graph request failed: %@ (%@, code %ld).",
+                                                      request_error.localizedDescription,
+                                                      request_error.domain,
+                                                      static_cast<long>(request_error.code)];
         }
         else
         {
-          resolved_error = [NSString stringWithFormat:@"Graph returned HTTP %ld.", static_cast<long>(status_code)];
+          NSString *response_body = TruncatedResponseBodyText(response_data);
+          if (response_body.length > 0)
+          {
+            resolved_error = [NSString stringWithFormat:@"Graph returned HTTP %ld: %@",
+                                                        static_cast<long>(status_code),
+                                                        response_body];
+          }
+          else
+          {
+            resolved_error = [NSString stringWithFormat:@"Graph returned HTTP %ld.", static_cast<long>(status_code)];
+          }
         }
       }
     }
@@ -238,10 +301,7 @@ namespace
 
       NSHTTPURLResponse *http_response = nil;
       NSError *request_error = nil;
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-      NSData *response_data = [NSURLConnection sendSynchronousRequest:request returningResponse:&http_response error:&request_error];
-#pragma clang diagnostic pop
+      NSData *response_data = PerformRequestSynchronously(request, &http_response, &request_error);
       NSInteger status_code = http_response.statusCode;
       BOOL success = (request_error == nil && status_code >= 200 && status_code < 300);
       if (success)
@@ -252,11 +312,24 @@ namespace
       {
         if (request_error != nil)
         {
-          resolved_error = [NSString stringWithFormat:@"Graph request failed: %@", request_error.localizedDescription];
+          resolved_error = [NSString stringWithFormat:@"Graph request failed: %@ (%@, code %ld).",
+                                                      request_error.localizedDescription,
+                                                      request_error.domain,
+                                                      static_cast<long>(request_error.code)];
         }
         else
         {
-          resolved_error = [NSString stringWithFormat:@"Graph returned HTTP %ld.", static_cast<long>(status_code)];
+          NSString *response_body = TruncatedResponseBodyText(response_data);
+          if (response_body.length > 0)
+          {
+            resolved_error = [NSString stringWithFormat:@"Graph returned HTTP %ld: %@",
+                                                        static_cast<long>(status_code),
+                                                        response_body];
+          }
+          else
+          {
+            resolved_error = [NSString stringWithFormat:@"Graph returned HTTP %ld.", static_cast<long>(status_code)];
+          }
         }
       }
     }
