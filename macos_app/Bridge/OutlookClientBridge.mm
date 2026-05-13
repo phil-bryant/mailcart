@@ -606,13 +606,13 @@ namespace
       @"subject" : @"",
       @"receivedDateTime" : @"",
       @"from" : @{
-        @"mailcartAddress" : @{
+        @"emailAddress" : @{
           @"address" : @""
         }
       },
       @"toRecipients" : @[
         @{
-          @"mailcartAddress" : @{
+          @"emailAddress" : @{
             @"address" : @""
           }
         }
@@ -718,14 +718,14 @@ class BridgeOutlookParser : public OutlookPayloadParser
     if (root.count > 0)
     {
       NSDictionary *sender_object = JsonDictionaryOrEmpty(root[@"from"]);
-      NSDictionary *sender_address = JsonDictionaryOrEmpty(sender_object[@"mailcartAddress"]);
+      NSDictionary *sender_address = JsonDictionaryOrEmpty(sender_object[@"emailAddress"]);
       NSArray *recipients = JsonArrayOrEmpty(root[@"toRecipients"]);
       NSDictionary *first_recipient = @{};
       if (recipients.count > 0)
       {
         first_recipient = JsonDictionaryOrEmpty(recipients[0]);
       }
-      NSDictionary *recipient_address = JsonDictionaryOrEmpty(first_recipient[@"mailcartAddress"]);
+      NSDictionary *recipient_address = JsonDictionaryOrEmpty(first_recipient[@"emailAddress"]);
       NSDictionary *body_object = JsonDictionaryOrEmpty(root[@"body"]);
       NSString *body_type = [[JsonStringOrEmpty(body_object[@"contentType"]) lowercaseString] copy];
       NSString *body_content = JsonStringOrEmpty(body_object[@"content"]);

@@ -20,3 +20,15 @@
   run rg "BOOL MoveMessageToFolder\\(const MoveMessageRequest &request\\)" "${bridge_file}"
   [ "$status" -eq 0 ]
 }
+
+@test "R035: bridge maps Graph sender and recipient through emailAddress fields" {
+  #R035
+  local bridge_file="/Users/phil/local/src/mailcart/macos_app/Bridge/OutlookClientBridge.mm"
+
+  run rg 'sender_object\[@"emailAddress"\]' "${bridge_file}"
+  [ "$status" -eq 0 ]
+  run rg 'first_recipient\[@"emailAddress"\]' "${bridge_file}"
+  [ "$status" -eq 0 ]
+  run rg "mailcartAddress" "${bridge_file}"
+  [ "$status" -ne 0 ]
+}

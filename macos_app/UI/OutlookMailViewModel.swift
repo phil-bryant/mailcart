@@ -1,5 +1,7 @@
 import Foundation
 
+extension OutlookClientBridge: @unchecked Sendable {}
+
 // #R001: Provide app-launched view-model behavior for Outlook mail flow.
 // #R005: Support minimum-size workflow by exposing state for split mail UX.
 // #R010: Supply state consumed by split mailbox/detail navigation UI.
@@ -22,6 +24,8 @@ import Foundation
 // #R095: Publish actionable mailbox error messages.
 @MainActor
 final class OutlookMailViewModel: ObservableObject {
+    private static let graphExplorerURL = "https://developer.microsoft.com/en-us/graph/graph-explorer"
+
     enum MailSortOption: String, CaseIterable {
         case dateReceived = "Date received"
         case subject = "Subject"
@@ -35,18 +39,20 @@ final class OutlookMailViewModel: ObservableObject {
     @Published private(set) var errorMessage: String?
     @Published var sortOption: MailSortOption = .dateReceived
 
-    private let bridge: OutlookClientBridge
+    private let bridge: OutlookBridgeClient
+    private let bridgeQueue = DispatchQueue(label: "mailcart.outlook-bridge-queue", qos: .userInitiated)
     private var searchTask: Task<Void, Never>?
     private var nextCursor: String = ""
     private var latestSearchGeneration: Int = 0
+    private var latestMessageLoadGeneration: Int = 0
 
     var canLoadMore: Bool {
         let canLoad = nextCursor.isEmpty == false && isSearching == false && isLoadingMore == false
         return canLoad
     }
 
-    init(bridge: OutlookClientBridge = OutlookClientBridge()) {
-        self.bridge = bridge
+    init(bridge: OutlookBridgeClient? = nil) {
+        self.bridge = bridge ?? buildDefaultOutlookBridgeClient()
         // #R065: Initial load starts immediately without requiring query edits.
         scheduleSearch(isInitialLoad: true)
     }
@@ -62,8 +68,15 @@ final class OutlookMailViewModel: ObservableObject {
     }
 
     func loadMailcart(messageId: String) {
-        let result = bridge.readMailcart(withMessageId: messageId)
-        selectedMailcart = result
+        latestMessageLoadGeneration += 1
+        let generation = latestMessageLoadGeneration
+        Task { [weak self] in
+            guard let self else { return }
+            let result = await self.readMailcartFromBridge(messageId: messageId)
+            if Task.isCancelled == false && generation == self.latestMessageLoadGeneration {
+                self.selectedMailcart = result
+            }
+        }
     }
 
     func loadMoreMailcarts() {
@@ -116,7 +129,8 @@ final class OutlookMailViewModel: ObservableObject {
     }
 
     private func fetchPage(cursor: String, appendResults: Bool, generation: Int) async {
-        let result = bridge.searchMailcarts(withQuery: query, limit: 50, cursor: cursor)
+        let queryAtRequestTime = query
+        let result = await searchMailcartsFromBridge(query: queryAtRequestTime, cursor: cursor)
         let isLatestGeneration = generation == latestSearchGeneration
         if Task.isCancelled == false && isLatestGeneration {
             if appendResults {
@@ -127,7 +141,7 @@ final class OutlookMailViewModel: ObservableObject {
             nextCursor = result.nextCursor
             let bridgeError = result.errorMessage.trimmingCharacters(in: .whitespacesAndNewlines)
             if bridgeError.isEmpty == false {
-                errorMessage = bridgeError
+                errorMessage = normalizedBridgeErrorMessage(bridgeError)
             } else {
                 errorMessage = nil
             }
@@ -155,10 +169,42 @@ final class OutlookMailViewModel: ObservableObject {
         let token = environment["OUTLOOK_GRAPH_TOKEN"] ?? ""
         let message: String?
         if token.isEmpty {
-            message = "Missing OUTLOOK_GRAPH_TOKEN. Configure token and relaunch with make run."
+            message = "Missing OUTLOOK_GRAPH_TOKEN. Configure token and relaunch with make run. Get a token from \(Self.graphExplorerURL)."
         } else {
             message = nil
         }
+        if bridge.isUITestingFixture {
+            return nil
+        }
         return message
+    }
+
+    private func normalizedBridgeErrorMessage(_ bridgeError: String) -> String {
+        let authIndicators = ["InvalidAuthenticationToken", "Missing OUTLOOK_GRAPH_TOKEN", "Graph returned HTTP 401"]
+        let isAuthError = authIndicators.contains { bridgeError.localizedCaseInsensitiveContains($0) }
+        if isAuthError {
+            return "\(bridgeError) Get a token from \(Self.graphExplorerURL)."
+        }
+        return bridgeError
+    }
+
+    private func searchMailcartsFromBridge(query: String, cursor: String) async -> OutlookSearchResultDTO {
+        let bridge = self.bridge
+        return await withCheckedContinuation { continuation in
+            bridgeQueue.async {
+                let result = bridge.searchMailcarts(withQuery: query, limit: 50, cursor: cursor)
+                continuation.resume(returning: result)
+            }
+        }
+    }
+
+    private func readMailcartFromBridge(messageId: String) async -> OutlookMailcartDTO {
+        let bridge = self.bridge
+        return await withCheckedContinuation { continuation in
+            bridgeQueue.async {
+                let result = bridge.readMailcart(withMessageId: messageId)
+                continuation.resume(returning: result)
+            }
+        }
     }
 }

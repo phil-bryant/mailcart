@@ -36,3 +36,10 @@ targets:
           - include/outlook_mailcart.hpp
           - src/outlook_client.cpp
           - include/outlook_client.hpp
+  MailcartUITests:
+    type: bundle.ui-testing
+    platform: macOS
+    dependencies:
+      - target: Mailcart
+    sources:
+      - path: UITests

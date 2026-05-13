@@ -8,17 +8,30 @@
 
 /* Begin PBXBuildFile section */
 		35276A5929D44FB0F4F5CA8D /* mime_content.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F9B862A4046DF670403F29C /* mime_content.cpp */; };
+		3EBF30EE88871AF138A5E189 /* MailcartUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB41894B27CB4FD3FF0725B9 /* MailcartUITests.swift */; };
+		54F6708D890F2670B69B4AFD /* UITestingSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A709CF42A3C744A5BE6FBBD /* UITestingSupport.swift */; };
 		55BE462576943E97D5512446 /* CrashReporterService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E0A47F2EF5B50C2BF6B355E /* CrashReporterService.swift */; };
 		6ADA1695A4F8B0A98D0A7335 /* OutlookClientBridge.mm in Sources */ = {isa = PBXBuildFile; fileRef = A731EDA7A89315A29CD9A7F6 /* OutlookClientBridge.mm */; };
 		74206399E1D2A0A4E445BE32 /* CrashReporter in Frameworks */ = {isa = PBXBuildFile; productRef = E152F82AFE709819233C8A93 /* CrashReporter */; };
 		76A52B31EA400B89551D715E /* outlook_mailcart.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D36EB4D0A9A281B0E3741778 /* outlook_mailcart.cpp */; };
 		987A41F14DF6490DA92EB4E1 /* mailcart.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 214BEE79C39B4254FDECCC10 /* mailcart.cpp */; };
 		B59C3909F70924243B37F152 /* OutlookMailContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D8E3957C2F61DF4DEDD0070 /* OutlookMailContentView.swift */; };
+		BD5E9B7CF3BDD9E7FF4562C9 /* HTMLBodyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2413BA3760820055809F490E /* HTMLBodyView.swift */; };
 		C637DCB54C3610694BB1B7B4 /* OutlookMailApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A76AAB774EB03152AA2E381 /* OutlookMailApp.swift */; };
 		DAB48E4C7AC071BB3EFF76D8 /* OutlookMailViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E180B3F5D48C4C80D7D91F7 /* OutlookMailViewModel.swift */; };
 		E140218C5669BB1F93027483 /* outlook_client.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5712FE9426E91A5FFC7F07AB /* outlook_client.cpp */; };
 		EF7BBC78C432905F84CF3C4E /* OutlookBridgeModels.m in Sources */ = {isa = PBXBuildFile; fileRef = 2029996D568A439DA3B2CC2C /* OutlookBridgeModels.m */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		A44B5F5C8C068E99F7CDB183 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 1EF177B1DAAEC6F93FF7652E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 911B15D12E385AC358209CBA;
+			remoteInfo = Mailcart;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		0A76AAB774EB03152AA2E381 /* OutlookMailApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OutlookMailApp.swift; sourceTree = "<group>"; };
@@ -28,6 +41,8 @@
 		2029996D568A439DA3B2CC2C /* OutlookBridgeModels.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = OutlookBridgeModels.m; sourceTree = "<group>"; };
 		213CDD3BDD0C2BB559E7E8AB /* OutlookBridgeModels.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = OutlookBridgeModels.h; sourceTree = "<group>"; };
 		214BEE79C39B4254FDECCC10 /* mailcart.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = mailcart.cpp; sourceTree = "<group>"; };
+		2413BA3760820055809F490E /* HTMLBodyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTMLBodyView.swift; sourceTree = "<group>"; };
+		3A709CF42A3C744A5BE6FBBD /* UITestingSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UITestingSupport.swift; sourceTree = "<group>"; };
 		4EC2A1467465273C8329728E /* OutlookClientBridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = OutlookClientBridge.h; sourceTree = "<group>"; };
 		5712FE9426E91A5FFC7F07AB /* outlook_client.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = outlook_client.cpp; sourceTree = "<group>"; };
 		5F9B862A4046DF670403F29C /* mime_content.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = mime_content.cpp; sourceTree = "<group>"; };
@@ -38,6 +53,8 @@
 		A731EDA7A89315A29CD9A7F6 /* OutlookClientBridge.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = OutlookClientBridge.mm; sourceTree = "<group>"; };
 		CE7770D575DB25099CC67850 /* mailcart.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = mailcart.hpp; sourceTree = "<group>"; };
 		D36EB4D0A9A281B0E3741778 /* outlook_mailcart.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = outlook_mailcart.cpp; sourceTree = "<group>"; };
+		DB41894B27CB4FD3FF0725B9 /* MailcartUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailcartUITests.swift; sourceTree = "<group>"; };
+		F46C3755BE0C6DBCA2E1FF7D /* MailcartUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MailcartUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -58,6 +75,7 @@
 				B4C8D4AFB84151972AA044FF /* Bridge */,
 				915B27364F01C07CB7265236 /* cpp_core */,
 				AC15DF35B0290E0C3D7F24DB /* UI */,
+				E4F9AE5C8A6BBDBA671017DC /* UITests */,
 				B5ABBB079D29947968D39166 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -76,9 +94,11 @@
 			isa = PBXGroup;
 			children = (
 				1E0A47F2EF5B50C2BF6B355E /* CrashReporterService.swift */,
+				2413BA3760820055809F490E /* HTMLBodyView.swift */,
 				0A76AAB774EB03152AA2E381 /* OutlookMailApp.swift */,
 				9D8E3957C2F61DF4DEDD0070 /* OutlookMailContentView.swift */,
 				7E180B3F5D48C4C80D7D91F7 /* OutlookMailViewModel.swift */,
+				3A709CF42A3C744A5BE6FBBD /* UITestingSupport.swift */,
 			);
 			path = UI;
 			sourceTree = "<group>";
@@ -98,6 +118,7 @@
 			isa = PBXGroup;
 			children = (
 				176F6F8289A4FFCF4C5FDCEB /* Mailcart.app */,
+				F46C3755BE0C6DBCA2E1FF7D /* MailcartUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -111,6 +132,14 @@
 				A20D9D306539BC692159B9FD /* outlook_mailcart.hpp */,
 			);
 			path = include;
+			sourceTree = "<group>";
+		};
+		E4F9AE5C8A6BBDBA671017DC /* UITests */ = {
+			isa = PBXGroup;
+			children = (
+				DB41894B27CB4FD3FF0725B9 /* MailcartUITests.swift */,
+			);
+			path = UITests;
 			sourceTree = "<group>";
 		};
 		F44E4CA4C71D8915EFC92C42 /* src */ = {
@@ -146,6 +175,24 @@
 			productReference = 176F6F8289A4FFCF4C5FDCEB /* Mailcart.app */;
 			productType = "com.apple.product-type.application";
 		};
+		AA12906CC5DF857868CCCCDD /* MailcartUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 00126223538F84D7DDD48AA8 /* Build configuration list for PBXNativeTarget "MailcartUITests" */;
+			buildPhases = (
+				94A97D0B05E84A092B7AA6D9 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				58C5A400EBD1F3DE9C34092D /* PBXTargetDependency */,
+			);
+			name = MailcartUITests;
+			packageProductDependencies = (
+			);
+			productName = MailcartUITests;
+			productReference = F46C3755BE0C6DBCA2E1FF7D /* MailcartUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -155,6 +202,9 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
+					AA12906CC5DF857868CCCCDD = {
+						TestTargetID = 911B15D12E385AC358209CBA;
+					};
 				};
 			};
 			buildConfigurationList = BAB6DF51D6D4963C8FED8AD2 /* Build configuration list for PBXProject "Mailcart" */;
@@ -175,6 +225,7 @@
 			projectRoot = "";
 			targets = (
 				911B15D12E385AC358209CBA /* Mailcart */,
+				AA12906CC5DF857868CCCCDD /* MailcartUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -185,11 +236,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				55BE462576943E97D5512446 /* CrashReporterService.swift in Sources */,
+				BD5E9B7CF3BDD9E7FF4562C9 /* HTMLBodyView.swift in Sources */,
 				EF7BBC78C432905F84CF3C4E /* OutlookBridgeModels.m in Sources */,
 				6ADA1695A4F8B0A98D0A7335 /* OutlookClientBridge.mm in Sources */,
 				C637DCB54C3610694BB1B7B4 /* OutlookMailApp.swift in Sources */,
 				B59C3909F70924243B37F152 /* OutlookMailContentView.swift in Sources */,
 				DAB48E4C7AC071BB3EFF76D8 /* OutlookMailViewModel.swift in Sources */,
+				54F6708D890F2670B69B4AFD /* UITestingSupport.swift in Sources */,
 				987A41F14DF6490DA92EB4E1 /* mailcart.cpp in Sources */,
 				35276A5929D44FB0F4F5CA8D /* mime_content.cpp in Sources */,
 				E140218C5669BB1F93027483 /* outlook_client.cpp in Sources */,
@@ -197,7 +250,23 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		94A97D0B05E84A092B7AA6D9 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3EBF30EE88871AF138A5E189 /* MailcartUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		58C5A400EBD1F3DE9C34092D /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 911B15D12E385AC358209CBA /* Mailcart */;
+			targetProxy = A44B5F5C8C068E99F7CDB183 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		2F01F0FC6B9F084D1ACD2511 /* Debug */ = {
@@ -284,6 +353,21 @@
 			};
 			name = Debug;
 		};
+		6147315FC565BEE70EE0F3B9 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				SDKROOT = macosx;
+				TEST_TARGET_NAME = Mailcart;
+			};
+			name = Debug;
+		};
 		8C418EA3CE60A53893EB107D /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -294,6 +378,21 @@
 					"@executable_path/../Frameworks",
 				);
 				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		A804D6865D608A81DFDC873C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				SDKROOT = macosx;
+				TEST_TARGET_NAME = Mailcart;
 			};
 			name = Release;
 		};
@@ -364,6 +463,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		00126223538F84D7DDD48AA8 /* Build configuration list for PBXNativeTarget "MailcartUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6147315FC565BEE70EE0F3B9 /* Debug */,
+				A804D6865D608A81DFDC873C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 		A0C42C84786328476ADC47D3 /* Build configuration list for PBXNativeTarget "Mailcart" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

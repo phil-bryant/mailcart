@@ -41,6 +41,7 @@ struct OutlookMailContentView: View {
                     get: { viewModel.query },
                     set: { value in viewModel.updateQuery(value) }
                 ))
+                .accessibilityIdentifier("mailcart.searchField")
                 .textFieldStyle(.roundedBorder)
                 .padding(.horizontal, 12)
                 .padding(.top, 12)
@@ -51,9 +52,12 @@ struct OutlookMailContentView: View {
                     set: { value in viewModel.updateSortOption(value) }
                 )) {
                     ForEach(OutlookMailViewModel.MailSortOption.allCases, id: \.self) { option in
-                        Text(option.rawValue).tag(option)
+                        Text(option.rawValue)
+                            .tag(option)
+                            .accessibilityIdentifier(option == .subject ? "mailcart.sortSubject" : "mailcart.sortDate")
                     }
                 }
+                .accessibilityIdentifier("mailcart.sortMode")
                 .pickerStyle(.segmented)
                 .padding(.horizontal, 12)
 
@@ -74,6 +78,7 @@ struct OutlookMailContentView: View {
                         Text(summary.subject)
                             .font(.headline)
                             .lineLimit(1)
+                            .accessibilityIdentifier("mailcart.summarySubject.\(summary.messageId)")
                         Text(summary.preview)
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
@@ -84,6 +89,7 @@ struct OutlookMailContentView: View {
                     }
                     .tag(summary.messageId)
                 }
+                .accessibilityIdentifier("mailcart.summaryList")
 
                 // #R070: Explicit load-more action fetches next page from bridge cursor.
                 Button(action: {
@@ -96,6 +102,7 @@ struct OutlookMailContentView: View {
                         Text("Load more emails")
                     }
                 })
+                .accessibilityIdentifier("mailcart.loadMoreButton")
                 .disabled(viewModel.canLoadMore == false)
                 .padding(.horizontal, 12)
                 .padding(.bottom, 12)
@@ -115,12 +122,15 @@ struct OutlookMailContentView: View {
                         Text(mailcart.subject)
                             .font(.title2)
                             .bold()
+                            .accessibilityIdentifier("mailcart.detailSubject")
                         Text("From: \(mailcart.sender)")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
+                            .accessibilityIdentifier("mailcart.detailSender")
                         Text("To: \(mailcart.recipient)")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
+                            .accessibilityIdentifier("mailcart.detailRecipient")
                         Text("Received: \(mailcart.receivedAt)")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
@@ -128,9 +138,12 @@ struct OutlookMailContentView: View {
                         // #R075: Rendered mode is default with explicit raw toggle.
                         Picker("Body", selection: $bodyDisplayMode) {
                             ForEach(BodyDisplayMode.allCases) { mode in
-                                Text(mode.rawValue).tag(mode)
+                                Text(mode.rawValue)
+                                    .tag(mode)
+                                    .accessibilityIdentifier(mode == .rendered ? "mailcart.bodyModeRendered" : "mailcart.bodyModeRaw")
                             }
                         }
+                        .accessibilityIdentifier("mailcart.bodyMode")
                         .pickerStyle(.segmented)
                         Divider()
                         if bodyDisplayMode == .rendered {
@@ -155,6 +168,7 @@ struct OutlookMailContentView: View {
                                     Button("Open") {
                                         viewModel.openAttachment(attachment)
                                     }
+                                    .accessibilityIdentifier("mailcart.openAttachment.\(attachment.attachmentId)")
                                 }
                             }
                         }
@@ -165,7 +179,7 @@ struct OutlookMailContentView: View {
                 VStack(spacing: 8) {
                     Image(systemName: "envelope.open")
                         .font(.largeTitle)
-                    Text("Select an mailcart")
+                    Text("Select an email")
                         .font(.title3)
                         .bold()
                     Text("Choose a message in the list to read it.")
@@ -178,16 +192,16 @@ struct OutlookMailContentView: View {
     @ViewBuilder
     private func renderedBodyView(mailcart: OutlookMailcartDTO) -> some View {
         let htmlBody = mailcart.bodyHtml
-        if htmlBody.isEmpty == false, let rendered = attributedHTMLBody(htmlBody) {
-            Text(rendered)
-                .font(.body)
-                .textSelection(.enabled)
-                .frame(maxWidth: .infinity, alignment: .leading)
+        if htmlBody.isEmpty == false {
+            HTMLBodyView(html: htmlBody)
+                .frame(minHeight: 420)
+                .accessibilityIdentifier("mailcart.renderedBody")
         } else {
             Text(mailcart.bodyText.isEmpty ? mailcart.body : mailcart.bodyText)
                 .font(.body)
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityIdentifier("mailcart.renderedFallbackBody")
         }
     }
 
@@ -197,23 +211,7 @@ struct OutlookMailContentView: View {
             .font(.body.monospaced())
             .textSelection(.enabled)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityIdentifier("mailcart.rawBodyText")
     }
 
-    private func attributedHTMLBody(_ html: String) -> AttributedString? {
-        let data = Data(html.utf8)
-        let rendered: AttributedString?
-        if let nsAttributed = try? NSAttributedString(
-            data: data,
-            options: [
-                .documentType: NSAttributedString.DocumentType.html,
-                .characterEncoding: String.Encoding.utf8.rawValue
-            ],
-            documentAttributes: nil
-        ) {
-            rendered = AttributedString(nsAttributed)
-        } else {
-            rendered = nil
-        }
-        return rendered
-    }
 }

@@ -154,6 +154,69 @@ EOF
   chmod +x "${STUB_BIN}/bats"
 }
 
+create_ui_regression_source_fixtures() {
+  mkdir -p "${SANDBOX}/macos_app/UI"
+  cat > "${SANDBOX}/macos_app/UI/OutlookMailContentView.swift" <<'EOF'
+import SwiftUI
+
+struct OutlookMailContentView: View {
+  var body: some View {
+    NavigationSplitView {
+      Text("Load more emails")
+      TextField("Search Outlook mail", text: Binding(
+        get: { "" },
+        set: { _ in }
+      ))
+      HTMLBodyView(html: htmlBody)
+    } detail: {
+      Text("detail")
+    }
+    .navigationTitle("Outlook")
+  }
+
+  private let htmlBody = "<html></html>"
+
+  private func rawBodyView(mailcart: OutlookMailcartDTO) -> some View {
+    Text("raw")
+  }
+}
+
+struct OutlookMailcartDTO {}
+EOF
+
+  cat > "${SANDBOX}/macos_app/UI/HTMLBodyView.swift" <<'EOF'
+import WebKit
+import SwiftUI
+
+struct HTMLBodyView: View {
+  let html: String
+  var body: some View {
+    Text(html)
+  }
+}
+EOF
+
+  cat > "${SANDBOX}/macos_app/UI/OutlookMailViewModel.swift" <<'EOF'
+import Foundation
+
+final class OutlookMailViewModel {
+  private let bridgeQueue = DispatchQueue(label: "mailcart.outlook-bridge-queue")
+
+  func read(messageId: String, queryAtRequestTime: String, cursor: String?) async {
+    // let result = await self.readMailcartFromBridge(messageId: messageId)
+    let selected = await self.readMailcartFromBridge(messageId: messageId)
+    // let result = await searchMailcartsFromBridge(query: queryAtRequestTime, cursor: cursor)
+    let result = await searchMailcartsFromBridge(query: queryAtRequestTime, cursor: cursor)
+    _ = selected
+    _ = result
+  }
+
+  private func readMailcartFromBridge(messageId: String) async -> String { messageId }
+  private func searchMailcartsFromBridge(query: String, cursor: String?) async -> String { query }
+}
+EOF
+}
+
 create_shellcheck_stub() {
   cat > "${STUB_BIN}/shellcheck" <<'EOF'
 #!/bin/bash
@@ -339,7 +402,7 @@ EOF
   run_make sast
   [ "$status" -eq 0 ]
   [[ "${output}" == *"✅ SAST checks completed with no findings."* ]]
-  run rg "^shellcheck argc=2 " "${TEST_LOG}"
+  run rg "^shellcheck argc=[0-9]+ " "${TEST_LOG}"
   [ "$status" -eq 0 ]
   run rg "\\[01_install_prerequisites.sh\\]" "${TEST_LOG}"
   [ "$status" -eq 0 ]
@@ -520,7 +583,7 @@ EOF
   [[ "${output}" == *"❌ clam scan completed with findings or failures."* ]]
 }
 
-@test "R005: test target runs C++ integration and non-UI shell tests" {
+@test "R005: test target runs C++ integration and all shell tests" {
   #R005
   create_compiler_stub
   create_bats_stub
@@ -533,7 +596,7 @@ EOF
   [ -x "${SANDBOX}/.build/outlook_integration_test" ]
   run rg "clang\+\+ -std=c\+\+17" "${TEST_LOG}"
   [ "$status" -eq 0 ]
-  run rg "bats +tests/sh/Bridge.bats tests/sh/mailcart.bats" "${TEST_LOG}"
+  run rg "bats +tests/sh/Bridge.bats tests/sh/UI.bats tests/sh/mailcart.bats" "${TEST_LOG}"
   [ "$status" -eq 0 ]
 }
 
@@ -548,6 +611,10 @@ EOF
   [ -f "${SANDBOX}/.build/OutlookClientBridge.o" ]
   [ -f "${SANDBOX}/.build/OutlookBridgeModels.o" ]
   run rg "xcrun swiftc -typecheck" "${TEST_LOG}"
+  [ "$status" -eq 0 ]
+  run rg "macos_app/UI/HTMLBodyView.swift" "${TEST_LOG}"
+  [ "$status" -eq 0 ]
+  run rg "macos_app/UI/HTMLBodyView.swift" "${SANDBOX}/Makefile"
   [ "$status" -eq 0 ]
   run rg "xcodegen generate --spec macos_app/project.yml" "${TEST_LOG}"
   [ "$status" -eq 0 ]
@@ -587,12 +654,14 @@ EOF
   [ "$status" -eq 0 ]
 }
 
-@test "R035: ui-test executes UI bats lane and smoke verification" {
+@test "R035: ui-test executes inline UI regression lane and smoke verification" {
   #R035
   local app_bundle="${SANDBOX}/app/Mailcart.app"
   local app_executable="${app_bundle}/Contents/MacOS/Mailcart"
-  create_bats_stub
   create_kill_stub
+  create_xcode_stubs
+  create_ui_regression_source_fixtures
+  mkdir -p "${SANDBOX}/macos_app/Mailcart.xcodeproj"
   mkdir -p "${SANDBOX}/tests/sh"
   mkdir -p "${SANDBOX}/scripts"
   mkdir -p "$(dirname "${app_executable}")"
@@ -605,10 +674,16 @@ EOF
   create_ps_stub_alive
   run_make ui-test APP_BUNDLE="${app_bundle}" APP_EXECUTABLE="${app_executable}"
   [ "$status" -eq 0 ]
+  [[ "${output}" == *"Running inline UI regression checks"* ]]
+  [[ "${output}" == *"Inline UI regression checks passed."* ]]
+  [[ "${output}" == *"Running macOS XCUITest regression suite"* ]]
+  [[ "${output}" == *"Running UI smoke launch check"* ]]
   [[ "${output}" == *"smoke test passed"* ]]
   [[ "${output}" != *"Skipping PLCrashReporter smoke verification"* ]]
-  run rg "bats tests/sh/UI.bats" "${TEST_LOG}"
+  run rg "xcodebuild test" "${TEST_LOG}"
   [ "$status" -eq 0 ]
+  run rg "bats tests/sh/UI.bats" "${TEST_LOG}"
+  [ "$status" -ne 0 ]
 
   cat > "${app_executable}" <<'EOF'
 #!/bin/bash
@@ -625,8 +700,10 @@ EOF
   #R080
   local app_bundle="${SANDBOX}/app/Mailcart.app"
   local app_executable="${app_bundle}/Contents/MacOS/Mailcart"
-  create_bats_stub
   create_kill_stub
+  create_xcode_stubs
+  create_ui_regression_source_fixtures
+  mkdir -p "${SANDBOX}/macos_app/Mailcart.xcodeproj"
   mkdir -p "${SANDBOX}/tests/sh"
   mkdir -p "${SANDBOX}/scripts"
   mkdir -p "$(dirname "${app_executable}")"

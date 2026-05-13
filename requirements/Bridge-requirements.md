@@ -47,9 +47,9 @@ Tests:
 - Verify search summary mapping omits body/sender/recipient fields at parser stage.
 
 R035  Statement: Resolve message read requests by id with empty-field fallback for unknown ids.
-Design: Message gateway requests Graph message-by-id payloads and falls back to deterministic requested-id + empty-field shape when fetch/parse/token conditions are not satisfied.
+Design: Message gateway requests Graph message-by-id payloads, maps sender/recipient using Graph `emailAddress.address` fields, and falls back to deterministic requested-id + empty-field shape when fetch/parse/token conditions are not satisfied.
 Tests:
-- Read a known Graph id and verify DTO field mapping from Graph message payload.
+- Read a known Graph id and verify DTO field mapping from Graph message payload including sender/recipient email addresses.
 - Read an unknown/unavailable id and verify returned message preserves requested id with empty values for other fields.
 
 R040  Statement: Instantiate and own C++ Outlook client dependencies inside bridge lifecycle.
@@ -75,3 +75,4 @@ Tests:
 - 2026-05-06: Initial reverse-engineered requirements for `macos_app/Bridge/*`.
 - 2026-05-07: Updated bridge requirements for runtime Graph token flow and live message fetch behavior.
 - 2026-05-12: Added clang-tidy suppression guard requirement for intentional adjacent NSString bridge helper parameters.
+- 2026-05-13: Clarified sender/recipient mapping contract to Graph `emailAddress.address` payload fields.

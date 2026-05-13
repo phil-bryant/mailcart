@@ -9,10 +9,10 @@ Design: `make help` lists supported targets and a one-line purpose for each (`li
 Tests:
 - Run `make help` and verify all documented targets are present with descriptions.
 
-R005  Statement: Run non-UI repository tests through the primary test lane.
-Design: `make test` compiles and executes the C++ integration test binary, then runs non-UI shell tests under `tests/sh` (excluding `UI.bats`).
+R005  Statement: Run repository tests through the primary test lane.
+Design: `make test` compiles and executes the C++ integration test binary, then runs all shell tests under `tests/sh` including `UI.bats`.
 Tests:
-- Run `make test` and verify C++ compilation succeeds, the binary exits zero, and non-UI BATS tests execute.
+- Run `make test` and verify C++ compilation succeeds, the binary exits zero, and all shell BATS tests execute (including `tests/sh/UI.bats`).
 - Remove one required C++ source path from the compile command and verify `make test` fails non-zero.
 
 R010  Statement: Include bridge compilation validation in the default build lane.
@@ -46,9 +46,9 @@ Tests:
 - Verify `make run` invokes `1psa` for token retrieval and launches the configured app executable with `OUTLOOK_GRAPH_TOKEN` set.
 
 R035  Statement: Expose a dedicated interface verification lane that includes smoke launch verification.
-Design: `make ui-test` ensures an app build is available, runs UI test coverage from `tests/sh/UI.bats`, then runs a smoke check that starts the app executable, waits three seconds, and fails when the process exits early.
+Design: `make ui-test` ensures an app build is available, runs several inline UI regression checks directly in `Makefile` (without invoking BATS), then runs a macOS XCUITest regression suite through `xcodebuild test` with optional selector and runtime overrides (`RUN_XCUITESTS`, `XCUITEST_SELECTOR`, `XCUITEST_PROJECT`, `XCUITEST_SCHEME`, `XCUITEST_DESTINATION`, `XCUITEST_DERIVED_DATA_PATH`), then runs a smoke check that starts the app executable and fails when the process exits early; crash-reporter smoke remains optional behind `RUN_CRASH_REPORTER_SMOKE_TEST=true`.
 Tests:
-- Run `make ui-test` and verify `tests/sh/UI.bats` executes through BATS and smoke output reports success.
+- Run `make ui-test` and verify inline UI regression checks, `xcodebuild test` XCUITest output, and smoke regression output report success.
 - Force immediate process exit and verify `make ui-test` fails non-zero with early-exit message.
 
 R045  Statement: Expose a consolidated SAST lane for repository security checks.
@@ -190,3 +190,6 @@ Tests:
 - 2026-05-13: Scoped SwiftLint lint lane to `.swiftlint.yml` with generated dependency tree exclusions.
 - 2026-05-13: Added `make clam` green-check/red-X summary marker requirement keyed to infected file count.
 - 2026-05-13: Removed `make ui-test` skip-message output when crash-reporter smoke toggle is not enabled.
+- 2026-05-13: Added UI lane controls for `make ui-test` smoke execution via `RUN_UI_SMOKE_TEST`.
+- 2026-05-13: Moved shell BATS ownership to `make test` and switched `make ui-test` to inline non-BATS UI regression checks plus smoke.
+- 2026-05-13: Replaced ad-hoc runtime automation lane with Teller-style XCUITest `xcodebuild test` lane in `make ui-test`.

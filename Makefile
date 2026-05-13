@@ -6,6 +6,10 @@ PROJECT_FILE ?= macos_app/$(APP_NAME).xcodeproj
 SCHEME ?= $(APP_NAME)
 CONFIGURATION ?= Debug
 DERIVED_DATA ?= $(UI_BUILD_DIR)/DerivedData
+XCUITEST_PROJECT ?= $(PROJECT_FILE)
+XCUITEST_SCHEME ?= MailcartUITests
+XCUITEST_DESTINATION ?= platform=macOS
+XCUITEST_DERIVED_DATA_PATH ?= $(UI_BUILD_DIR)/DerivedDataUITests
 SAST_REPORT_DIR ?= reports/sast
 APP_BUNDLE := $(DERIVED_DATA)/Build/Products/$(CONFIGURATION)/$(APP_NAME).app
 APP_EXECUTABLE := $(APP_BUNDLE)/Contents/MacOS/$(APP_NAME)
@@ -16,7 +20,7 @@ OUTLOOK_GRAPH_TOKEN_PSA_FIELD ?= password
 
 .PHONY: help build test ui-test run run-ui crash crash-reporter-smoke \
 	sast lint clam clean \
-	_cpp-test _bridge-check _ui-typecheck _ui-build _ui-rebuild _non-ui-tests _ui-smoke \
+	_cpp-test _bridge-check _ui-typecheck _ui-build _ui-rebuild _shell-tests _ui-regression _ui-xcuitests _ui-smoke \
 	_sast_shell _sast_semgrep _sast_bandit _sast_detect_secrets _sast_clang_tidy _sast_secrets \
 	_lint_swiftlint _lint_python_equivalent \
 	verify-macos-crash-reporter run-api
@@ -28,8 +32,8 @@ help:
 	@echo "  make clam    - Run Clam AntiVirus recursive scan for this repository"
 	@echo "  make build   - Build bridge checks, UI typecheck, and app binary"
 	@echo "  make sast    - Run SAST (ShellCheck, Semgrep, Bandit, detect-secrets, gitleaks)"
-	@echo "  make test    - Run C++ integration test and non-UI ./tests/* tests"
-	@echo "  make ui-test - Run UI BATS tests and app smoke launch check"
+	@echo "  make test    - Run C++ integration test and all ./tests/sh/*.bats tests"
+	@echo "  make ui-test - Run inline + XCUITest UI regressions and app smoke launch check"
 	@echo "  make crash   - Verify PLCrashReporter crash capture and replay flow"
 	@echo "  make run-ui  - Build and launch macOS app"
 	@echo "  make run-api - Run Matchy-compatible API"
@@ -42,16 +46,28 @@ help:
 #R025: Build lane rebuilds app deterministically when binary is missing.
 build: _bridge-check _ui-typecheck _ui-build
 
-#R005: Run non-UI test lanes, including C++ integration coverage.
-test: _cpp-test _non-ui-tests
+#R005: Run C++ integration plus full shell BATS regression coverage.
+test: _cpp-test _shell-tests
 
 #R035: Run UI-focused test lane.
 ui-test: _ui-build
-	@bats "tests/sh/UI.bats"
-	@$(MAKE) _ui-smoke
+	@echo "▶ Running inline UI regression checks..."
+	@$(MAKE) _ui-regression
+	@if [ "$${RUN_XCUITESTS:-true}" = "true" ]; then \
+		echo "▶ Running macOS XCUITest regression suite..."; \
+		XCUITEST_PROJECT="$(XCUITEST_PROJECT)" XCUITEST_SCHEME="$(XCUITEST_SCHEME)" XCUITEST_DESTINATION="$(XCUITEST_DESTINATION)" XCUITEST_DERIVED_DATA_PATH="$(XCUITEST_DERIVED_DATA_PATH)" XCUITEST_SELECTOR="$${XCUITEST_SELECTOR:-}" $(MAKE) _ui-xcuitests; \
+	else \
+		echo "ℹ️  Skipping XCUITest regression suite (RUN_XCUITESTS=false)."; \
+	fi
+	@if [ "$${RUN_UI_SMOKE_TEST:-true}" = "true" ]; then \
+		echo "▶ Running UI smoke launch check..."; \
+		APP_EXECUTABLE="$(APP_EXECUTABLE)" APP_BUNDLE="$(APP_BUNDLE)" UI_BUILD_DIR="$(UI_BUILD_DIR)" DERIVED_DATA="$(DERIVED_DATA)" PROJECT_FILE="$(PROJECT_FILE)" SCHEME="$(SCHEME)" CONFIGURATION="$(CONFIGURATION)" $(MAKE) _ui-smoke; \
+	else \
+		echo "ℹ️  Skipping UI smoke launch check (RUN_UI_SMOKE_TEST=false)."; \
+	fi
 	@if [ "$${RUN_CRASH_REPORTER_SMOKE_TEST:-false}" = "true" ]; then \
 		echo "▶ Running PLCrashReporter smoke verification..."; \
-		$(MAKE) crash-reporter-smoke; \
+		APP_EXECUTABLE="$(APP_EXECUTABLE)" APP_BUNDLE="$(APP_BUNDLE)" UI_BUILD_DIR="$(UI_BUILD_DIR)" DERIVED_DATA="$(DERIVED_DATA)" PROJECT_FILE="$(PROJECT_FILE)" SCHEME="$(SCHEME)" CONFIGURATION="$(CONFIGURATION)" $(MAKE) crash-reporter-smoke; \
 	fi
 
 #R045: Expose a consolidated SAST lane for repository security tools.
@@ -131,6 +147,7 @@ lint:
 	fi
 
 #R130: Expose ClamAV repository scan through dedicated make target.
+#R140: Emit explicit pass/fail summary markers from infected-file count.
 clam:
 	@if ! command -v clamscan >/dev/null 2>&1; then \
 		echo "clamscan is required for make clam. Install ClamAV to continue."; \
@@ -197,21 +214,107 @@ _cpp-test:
 		-o ".build/outlook_integration_test"
 	@".build/outlook_integration_test"
 
-_non-ui-tests:
-	@typeset -a NON_UI_TESTS; \
-	NON_UI_TESTS=(); \
+_shell-tests:
+	@typeset -a SHELL_TESTS; \
+	SHELL_TESTS=(); \
 	for TEST_FILE in tests/sh/*.bats; do \
 		if [ -f "$$TEST_FILE" ]; then \
-			if [ "$$(basename "$$TEST_FILE")" != "UI.bats" ]; then \
-				NON_UI_TESTS+=("$$TEST_FILE"); \
-			fi; \
+			SHELL_TESTS+=("$$TEST_FILE"); \
 		fi; \
 	done; \
-	if [ "$${#NON_UI_TESTS[@]}" -gt 0 ]; then \
-		bats "$${NON_UI_TESTS[@]}"; \
+	if [ "$${#SHELL_TESTS[@]}" -gt 0 ]; then \
+		bats "$${SHELL_TESTS[@]}"; \
 	else \
-		echo "No non-UI shell tests found."; \
+		echo "No shell tests found."; \
 	fi
+
+_ui-regression:
+	@printf '%s\n' \
+		'from pathlib import Path' \
+		'' \
+		'checks = [' \
+		'    ("load-more-label", Path("macos_app/UI/OutlookMailContentView.swift"), '\''Text("Load more emails")'\''),' \
+		'    ("rendered-mode-html-view", Path("macos_app/UI/OutlookMailContentView.swift"), "HTMLBodyView(html: htmlBody)"),' \
+		'    ("raw-body-renderer", Path("macos_app/UI/OutlookMailContentView.swift"), "private func rawBodyView(mailcart: OutlookMailcartDTO)"),' \
+		'    ("split-view-layout", Path("macos_app/UI/OutlookMailContentView.swift"), "NavigationSplitView"),' \
+		'    ("search-placeholder", Path("macos_app/UI/OutlookMailContentView.swift"), '\''TextField("Search Outlook mail", text: Binding('\''),' \
+		'    ("navigation-title", Path("macos_app/UI/OutlookMailContentView.swift"), '\''.navigationTitle("Outlook")'\''),' \
+		'    ("webkit-import", Path("macos_app/UI/HTMLBodyView.swift"), "import WebKit"),' \
+		'    ("bridge-queue", Path("macos_app/UI/OutlookMailViewModel.swift"), '\''private let bridgeQueue = DispatchQueue(label: "mailcart.outlook-bridge-queue"'\''),' \
+		'    ("read-off-main", Path("macos_app/UI/OutlookMailViewModel.swift"), "let result = await self.readMailcartFromBridge(messageId: messageId)"),' \
+		'    ("search-off-main", Path("macos_app/UI/OutlookMailViewModel.swift"), "let result = await searchMailcartsFromBridge(query: queryAtRequestTime, cursor: cursor)"),' \
+		']' \
+		'' \
+		'for check_name, file_path, expected in checks:' \
+		'    source = file_path.read_text(encoding="utf-8")' \
+		'    if expected not in source:' \
+		'        raise SystemExit(f"UI regression failed ({check_name}): missing `{expected}` in {file_path}")' \
+		'' \
+		'print("Inline UI regression checks passed.")' \
+	| python3
+
+_ui-xcuitests:
+	@if [ ! -d "$(XCUITEST_PROJECT)" ]; then \
+		echo "❌ XCUITest project not found at $(XCUITEST_PROJECT)"; \
+		exit 1; \
+	fi
+	@if ! command -v xcodebuild >/dev/null 2>&1; then \
+		echo "❌ xcodebuild is required for macOS XCUITest regression suite."; \
+		exit 1; \
+	fi
+	@typeset -a XCUITEST_METHODS XCUITEST_ARGS XCUITEST_SELECTED_NUMBERS XCUITEST_SELECTOR_TOKENS; \
+	XCUITEST_METHODS=( \
+		"testSearchFilterFindsFixtureRow" \
+		"testLoadMoreAppendsFixtureRows" \
+		"testSelectingSummaryLoadsFixtureDetail" \
+		"testSortDetailAndBodyModesWorkInSingleLaunch" \
+		"testSearchFieldAcceptsTyping" \
+		"testLoadMoreButtonExistsAndCanBeTapped" \
+		"testSummaryListIsVisible" \
+	); \
+	XCUITEST_ARGS=(); \
+	XCUITEST_SELECTED_NUMBERS=(); \
+	if [ -z "$${XCUITEST_SELECTOR:-}" ]; then \
+		XCUITEST_ARGS+=("-only-testing:MailcartUITests"); \
+	else \
+		IFS=',' read -r -A XCUITEST_SELECTOR_TOKENS <<< "$${XCUITEST_SELECTOR}"; \
+		for TOKEN in "$${XCUITEST_SELECTOR_TOKENS[@]}"; do \
+			TOKEN="$${TOKEN//[[:space:]]/}"; \
+			if [[ "$$TOKEN" =~ ^[0-9]+$$ ]]; then \
+				START="$$TOKEN"; END="$$TOKEN"; \
+			elif [[ "$$TOKEN" =~ ^([0-9]+)-([0-9]+)$$ ]]; then \
+				START="$${match[1]}"; END="$${match[2]}"; \
+				if [ "$$START" -gt "$$END" ]; then \
+					echo "❌ Invalid XCUITEST_SELECTOR range '$$TOKEN' (start > end)."; \
+					exit 1; \
+				fi; \
+			else \
+				echo "❌ Invalid XCUITEST_SELECTOR token '$$TOKEN'. Expected N or N-M."; \
+				exit 1; \
+			fi; \
+			for (( INDEX=START; INDEX<=END; INDEX++ )); do \
+				if [ "$$INDEX" -lt 1 ] || [ "$$INDEX" -gt "$${#XCUITEST_METHODS[@]}" ]; then \
+					echo "❌ Unknown UI regression test number '$$INDEX'. Valid range is 1-$${#XCUITEST_METHODS[@]}."; \
+					exit 1; \
+				fi; \
+				if [[ " $${XCUITEST_SELECTED_NUMBERS[*]} " != *" $$INDEX "* ]]; then \
+					XCUITEST_SELECTED_NUMBERS+=("$$INDEX"); \
+				fi; \
+			done; \
+		done; \
+		for INDEX in "$${XCUITEST_SELECTED_NUMBERS[@]}"; do \
+			METHOD="$${XCUITEST_METHODS[$$((INDEX-1))]}"; \
+			XCUITEST_ARGS+=("-only-testing:MailcartUITests/MailcartUITests/$$METHOD"); \
+		done; \
+	fi; \
+	mkdir -p "$(XCUITEST_DERIVED_DATA_PATH)"; \
+	xattr -dr com.apple.quarantine "$(XCUITEST_DERIVED_DATA_PATH)" >/dev/null 2>&1 || true; \
+	xcodebuild test \
+		-project "$(XCUITEST_PROJECT)" \
+		-scheme "$(XCUITEST_SCHEME)" \
+		-destination "$(XCUITEST_DESTINATION)" \
+		-derivedDataPath "$(XCUITEST_DERIVED_DATA_PATH)" \
+		"$${XCUITEST_ARGS[@]}"
 
 #R010: Compile bridge translation units into local object files.
 _bridge-check:
@@ -229,6 +332,8 @@ _ui-typecheck:
 	@xcrun swiftc -typecheck \
 		"macos_app/UI/OutlookMailApp.swift" \
 		"macos_app/UI/CrashReporterService.swift" \
+		"macos_app/UI/HTMLBodyView.swift" \
+		"macos_app/UI/UITestingSupport.swift" \
 		"macos_app/UI/OutlookMailContentView.swift" \
 		"macos_app/UI/OutlookMailViewModel.swift" \
 		-sdk "$$(xcrun --sdk macosx --show-sdk-path)" \
@@ -247,6 +352,8 @@ _ui-build:
 		for SOURCE_FILE in \
 			macos_app/UI/OutlookMailApp.swift \
 			macos_app/UI/CrashReporterService.swift \
+			macos_app/UI/HTMLBodyView.swift \
+			macos_app/UI/UITestingSupport.swift \
 			macos_app/UI/OutlookMailContentView.swift \
 			macos_app/UI/OutlookMailViewModel.swift \
 			macos_app/Bridge/OutlookClientBridge.h \

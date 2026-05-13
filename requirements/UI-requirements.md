@@ -53,10 +53,10 @@ Tests:
 - Clear selection and verify no load call occurs for empty id.
 
 R040  Statement: Render selected mailcart details with readable metadata and body content.
-Design: Detail pane shows subject title plus From/To/Received metadata, divider, and full message body text with selection enabled.
+Design: Detail pane shows subject title plus From/To/Received metadata, divider, and full message body content where rendered mode uses the HTML renderer component for HTML payloads while plain-text payloads remain selectable SwiftUI text.
 Tests:
-- Load a message and verify subject, sender, recipient, timestamp, and body all render.
-- Verify body text supports text selection interaction.
+- Load a message and verify subject, sender, recipient, timestamp, and body all render with sender/recipient email addresses from bridge payload fields.
+- Verify plain-text body supports text selection interaction.
 
 R045  Statement: Render an empty-state prompt when no mailcart is selected.
 Design: Detail pane displays envelope icon, bold `Select an mailcart` heading, and explanatory guidance while `selectedMailcart` is nil.
@@ -77,10 +77,11 @@ Tests:
 - Confirm cancelled tasks do not overwrite summaries or searching state after cancellation.
 
 R060  Statement: Map bridge read/search responses into published UI state.
-Design: `loadMailcart(messageId:)` synchronously updates `selectedMailcart` from bridge read result, and completed debounced search assigns returned summaries then clears searching flag.
+Design: `loadMailcart(messageId:)` schedules asynchronous bridge read work and updates `selectedMailcart` when the latest in-flight request completes; completed debounced search assigns returned summaries then clears searching flag.
 Tests:
 - Invoke `loadMailcart(messageId:)` with known id and verify `selectedMailcart` updates to returned DTO.
-- Complete a search and verify `summaries` updates and `isSearching` becomes false.
+- Select different message ids in quick succession and verify stale read responses do not overwrite the latest selection.
+- Complete a search and verify `summaries` updates and `isSearching` becomes false without blocking main-actor UI interactions.
 
 R065  Statement: Load initial mailbox content automatically when the UI launches.
 Design: `OutlookMailViewModel` schedules an initial search from `init` without requiring search-field input.
@@ -89,15 +90,15 @@ Tests:
 - Verify initial load still executes when query is empty.
 
 R070  Statement: Allow users to request additional server-paginated mailcart summaries.
-Design: View-model tracks `nextCursor` from bridge search results, exposes `canLoadMore`, and appends summaries when `Load more mailcarts` is clicked.
+Design: View-model tracks `nextCursor` from bridge search results, exposes `canLoadMore`, and appends summaries when `Load more emails` is clicked.
 Tests:
-- Perform a search with multi-page backend data and verify clicking `Load more mailcarts` appends additional rows.
+- Perform a search with multi-page backend data and verify clicking `Load more emails` appends additional rows.
 - Verify load-more button disables when no continuation cursor is available.
 
 R075  Statement: Provide rendered-vs-raw mailcart body mode with rendered as default.
-Design: Detail pane exposes segmented body mode control defaulted to `Rendered`, showing rendered HTML/plain text in rendered mode and raw source in raw mode.
+Design: Detail pane exposes segmented body mode control defaulted to `Rendered`, showing HTML content via `HTMLBodyView` in rendered mode and raw source in raw mode.
 Tests:
-- Select an mailcart with HTML body and verify default detail body is rendered mode.
+- Select a mailcart with HTML body and verify default detail body uses the rendered HTML view component.
 - Switch to raw mode and verify raw source body text is shown.
 
 R080  Statement: Display and open all attachments for the selected mailcart.
@@ -128,3 +129,4 @@ Tests:
 
 - 2026-05-06: Initial reverse-engineered requirements for `macos_app/UI/*`.
 - 2026-05-07: Added requirements for initial load, pagination, body mode toggle, attachments, sorting, close-to-terminate lifecycle, and mailbox error messaging.
+- 2026-05-13: Tightened regression requirements for async non-blocking detail loads, HTML renderer usage, and updated load-more button copy.
