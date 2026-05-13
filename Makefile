@@ -14,7 +14,8 @@ OUTLOOK_GRAPH_TOKEN_PSA_FIELD ?= password
 
 .DEFAULT_GOAL := help
 
-.PHONY: help build test ui-test run run-matchy-api crash-reporter-smoke sast sast-report clean \
+.PHONY: help 00 build test ui-test run run-ui run-matchy-api crash crash-reporter-smoke \
+	verify-crash sast sast-report lint clean \
 	_cpp-test _bridge-check _ui-typecheck _ui-build _ui-rebuild _non-ui-tests _ui-smoke \
 	_sast_shell _sast_semgrep _sast_clang_tidy _sast_clang_tidy_report _sast_secrets \
 	verify-macos-crash-reporter matchy-mailcart-api
@@ -22,17 +23,22 @@ OUTLOOK_GRAPH_TOKEN_PSA_FIELD ?= password
 #R001: Expose discoverable developer entrypoints through a help target.
 help:
 	@echo "Targets:"
+	@echo "  make 00      - Run full requirements/source/test traceability verification"
+	@echo "  make lint    - Run extended clang-tidy report checks"
 	@echo "  make build   - Build bridge checks, UI typecheck, and app binary"
 	@echo "  make test    - Run C++ integration test and non-UI ./tests/* tests"
 	@echo "  make ui-test - Run UI BATS tests and app smoke launch check"
-	@echo "  make run     - Build and launch macOS app"
-	@echo "  make run-matchy-api - Run lightweight API for Matchy search/move calls"
-	@echo "  make crash-reporter-smoke - Verify PLCrashReporter crash capture and replay flow"
-	@echo "  make verify-macos-crash-reporter - Run crash reporter verification"
-	@echo "  make matchy-mailcart-api - Run Matchy-compatible API"
 	@echo "  make sast    - Run blocking SAST checks (ShellCheck, Semgrep, clang-tidy, gitleaks)"
-	@echo "  make sast-report - Run non-blocking extended clang-tidy report checks"
+	@echo "  make crash   - Verify PLCrashReporter crash capture and replay flow"
+	@echo "  make verify-crash - Run crash reporter verification"
+	@echo "  make run-ui  - Build and launch macOS app"
+	@echo "  make matchy-mailcart-api - Run Matchy-compatible API"
+	@echo "  make run-matchy-api - Run lightweight API for Matchy search/move calls"
 	@echo "  make clean   - Remove local build artifacts"
+
+#R105: Expose numbered requirements verification lane through Makefile target.
+00:
+	@bash "./00_verify_requirements_traceability.sh"
 
 #R005: Build all repository deliverables and checks.
 #R010: Build lane includes Objective-C and Objective-C++ bridge compilation checks.
@@ -101,6 +107,14 @@ run-matchy-api:
 verify-macos-crash-reporter: crash-reporter-smoke
 
 matchy-mailcart-api: run-matchy-api
+
+lint: sast-report
+
+crash: crash-reporter-smoke
+
+verify-crash: verify-macos-crash-reporter
+
+run-ui: run
 
 #R080: Expose dedicated crash-reporter smoke verification lane.
 crash-reporter-smoke: _ui-build

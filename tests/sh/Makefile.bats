@@ -211,14 +211,32 @@ EOF
   #R001
   run_make help
   [ "$status" -eq 0 ]
+  [[ "${output}" == *"make 00"* ]]
+  [[ "${output}" == *"make lint"* ]]
   [[ "${output}" == *"make build"* ]]
   [[ "${output}" == *"make test"* ]]
   [[ "${output}" == *"make ui-test"* ]]
-  [[ "${output}" == *"make run"* ]]
-  [[ "${output}" == *"make crash-reporter-smoke"* ]]
+  [[ "${output}" == *"make crash"* ]]
+  [[ "${output}" == *"make verify-crash"* ]]
+  [[ "${output}" == *"make run-ui"* ]]
   [[ "${output}" == *"make sast"* ]]
-  [[ "${output}" == *"make sast-report"* ]]
+  [[ "${output}" == *"make matchy-mailcart-api"* ]]
+  [[ "${output}" == *"make run-matchy-api"* ]]
   [[ "${output}" == *"make clean"* ]]
+}
+
+@test "R105: make 00 runs repository traceability verifier script" {
+  #R105
+  cat > "${SANDBOX}/00_verify_requirements_traceability.sh" <<'EOF'
+#!/bin/bash
+printf "traceability-script-ran\n" >> "${TEST_LOG}"
+exit 0
+EOF
+  chmod +x "${SANDBOX}/00_verify_requirements_traceability.sh"
+  run_make 00
+  [ "$status" -eq 0 ]
+  run rg "^traceability-script-ran$" "${TEST_LOG}"
+  [ "$status" -eq 0 ]
 }
 
 @test "R045,R050,R055,R060,R065: sast runs shell, semgrep, clang-tidy, and secret scanning" {
@@ -451,10 +469,13 @@ EOF
 }
 
 @test "R095,R100: make exposes script-backed Matchy and crash alias lanes" {
-  #R095 #R100
+  #R095 #R100 #R030 #R070
   local app_bundle="${SANDBOX}/app/OutlookMailApp.app"
   local app_executable="${app_bundle}/Contents/MacOS/OutlookMailApp"
   create_python3_stub
+  create_1psa_stub
+  create_clang_tidy_stub
+  create_xcrun_stub
   create_ps_stub_alive
   create_kill_stub
   mkdir -p "${SANDBOX}/scripts"
@@ -481,7 +502,19 @@ EOF
 
   run_make verify-macos-crash-reporter APP_BUNDLE="${app_bundle}" APP_EXECUTABLE="${app_executable}"
   [ "$status" -eq 0 ]
+  run_make verify-crash APP_BUNDLE="${app_bundle}" APP_EXECUTABLE="${app_executable}"
+  [ "$status" -eq 0 ]
+  run_make crash APP_BUNDLE="${app_bundle}" APP_EXECUTABLE="${app_executable}"
+  [ "$status" -eq 0 ]
+  run_make run-ui APP_BUNDLE="${app_bundle}" APP_EXECUTABLE="${app_executable}" PROJECT_FILE="${SANDBOX}/Generated.xcodeproj"
+  [ "$status" -eq 0 ]
+  run_make lint
+  [ "$status" -eq 0 ]
   run rg "^crash-smoke-script$" "${TEST_LOG}"
+  [ "$status" -eq 0 ]
+  run rg "^1psa -f outlook_graph_token password$" "${TEST_LOG}"
+  [ "$status" -eq 0 ]
+  run rg "^clang-tidy +--config-file=.clang-tidy.report +cpp_core/src/mailcart.cpp" "${TEST_LOG}"
   [ "$status" -eq 0 ]
 }
 

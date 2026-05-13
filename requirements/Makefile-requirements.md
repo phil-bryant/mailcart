@@ -5,7 +5,7 @@
 Applies to repository task automation in `Makefile` for consolidated local build, test lanes, app launch, and cleanup workflows.
 
 R001  Statement: Expose discoverable consolidated developer entrypoints through a help target.
-Design: `make help` lists supported targets and a one-line purpose for each (`build`, `test`, `ui-test`, `run`, `crash-reporter-smoke`, `sast`, `sast-report`, `clean`).
+Design: `make help` lists supported targets and a one-line purpose for each (`00`, `lint`, `build`, `test`, `ui-test`, `sast`, `crash`, `verify-crash`, `run-ui`, `matchy-mailcart-api`, `run-matchy-api`, `clean`).
 Tests:
 - Run `make help` and verify all documented targets are present with descriptions.
 
@@ -108,10 +108,17 @@ Tests:
 - Run `make matchy-mailcart-api` and verify it delegates to `run-matchy-api`.
 
 R100  Statement: Expose stable alias entrypoints for script-backed crash and Matchy lanes.
-Design: `make verify-macos-crash-reporter` aliases to `crash-reporter-smoke`, and `make matchy-mailcart-api` aliases to `run-matchy-api`.
+Design: `make verify-macos-crash-reporter` and `make verify-crash` alias to `crash-reporter-smoke`, `make crash` aliases to `crash-reporter-smoke`, and `make matchy-mailcart-api` aliases to `run-matchy-api`.
 Tests:
 - Run `make verify-macos-crash-reporter` and verify crash reporter script lane executes.
+- Run `make verify-crash` and `make crash` and verify both delegate to crash reporter smoke lane.
 - Run `make matchy-mailcart-api` and verify Matchy API script lane executes.
+
+R105  Statement: Expose a numbered make target to run full repository traceability verification.
+Design: `make 00` invokes `./00_verify_requirements_traceability.sh` so requirement/source/test traceability can be executed via the same Make workflow.
+Tests:
+- Run `make 00` and verify `00_verify_requirements_traceability.sh` executes.
+- Stub the script to fail and verify `make 00` exits non-zero.
 
 R085  Statement: Print a per-tool header before each blocking SAST tool execution.
 Design: `make sast` emits a distinct header line for each tool lane (`ShellCheck`, `Semgrep`, `clang-tidy`, `gitleaks`) before invoking the corresponding `_sast_*` target.
@@ -139,3 +146,4 @@ Tests:
 - 2026-05-07: Added dedicated PLCrashReporter smoke lane and optional `make ui-test` execution toggle.
 - 2026-05-12: Added `make sast` per-tool header and running-notification output requirements.
 - 2026-05-12: Folded crash-reporter and Matchy API make entrypoint requirements into Makefile requirements.
+- 2026-05-12: Added human-friendly alias targets (`lint`, `crash`, `verify-crash`, `run-ui`) and `make 00` traceability entrypoint.
