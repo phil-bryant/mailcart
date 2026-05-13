@@ -3,6 +3,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+// #R050: Keep public bridge surface aligned with blocking clang-tidy policy ownership in OutlookClientBridge helpers.
 // #R001: Expose Objective-C bridge operations for search and read.
 // #R015: Bind client operations to gateway/parser-backed bridge behavior.
 // #R040: Own and expose bridge lifecycle around C++ client dependencies.

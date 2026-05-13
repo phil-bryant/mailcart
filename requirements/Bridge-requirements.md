@@ -64,7 +64,14 @@ Tests:
 - Verify `searchMailcartsWithQuery:limit:` returns `NSArray<OutlookMailcartSummaryDTO *>` with expected element values.
 - Verify `readMailcartWithMessageId:` returns an `OutlookMailcartDTO` whose properties match C++ domain output.
 
+R050  Statement: Keep bridge helper signatures compatible with blocking clang-tidy policy in `make sast`.
+Design: Bridge helpers avoid swappable-parameter signatures by grouping related request values into typed helper structs (`GraphRequestHeaders`, `MoveMessageRequest`) and passing those structs to helper functions instead of adjacent `NSString *` parameters.
+Tests:
+- Verify `OutlookClientBridge.mm` defines `GraphRequestHeaders` and uses it in `FetchGraphRequestData`.
+- Verify `OutlookClientBridge.mm` defines `MoveMessageRequest` and uses it in `MoveMessageToFolder`.
+
 ## Changelog
 
 - 2026-05-06: Initial reverse-engineered requirements for `macos_app/Bridge/*`.
 - 2026-05-07: Updated bridge requirements for runtime Graph token flow and live message fetch behavior.
+- 2026-05-12: Added clang-tidy suppression guard requirement for intentional adjacent NSString bridge helper parameters.

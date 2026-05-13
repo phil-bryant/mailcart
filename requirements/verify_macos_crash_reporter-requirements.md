@@ -1,8 +1,8 @@
-# 17 Verify macOS Crash Reporter Requirements
+# Verify macOS Crash Reporter Requirements
 
 ## Scope
 
-Applies to `17_verify_macos_crash_reporter.sh`.
+Applies to `scripts/verify_macos_crash_reporter.sh`.
 
 R001  Statement: Run the crash-reporter verification script in strict fail-fast mode.
 Design: Script sets strict shell options and exits non-zero on command failures.
@@ -11,7 +11,7 @@ Tests:
 - Introduce a failing command path and verify script exits non-zero.
 
 R005  Statement: Run verification from repository root regardless of caller working directory.
-Design: Script resolves its own directory and changes into that directory before performing build/launch operations.
+Design: Script resolves repository root from script path and changes into that directory before performing build/launch operations.
 Tests:
 - Run script from an alternate working directory and verify it still executes repository-relative commands.
 - Verify relative `make` and app executable paths are resolved from repository root.
@@ -60,4 +60,4 @@ Tests:
 
 ## Changelog
 
-- 2026-05-07: Added macOS PLCrashReporter smoke verification workflow for forced-crash/relaunch artifact validation.
+- 2026-05-12: Added script-scoped crash reporter requirements for `scripts/verify_macos_crash_reporter.sh`.

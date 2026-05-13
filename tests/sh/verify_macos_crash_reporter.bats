@@ -2,7 +2,7 @@
 
 setup() {
   export REPO_ROOT="/Users/phil/local/src/mailcart"
-  export SCRIPT_PATH="${REPO_ROOT}/17_verify_macos_crash_reporter.sh"
+  export SCRIPT_PATH="${REPO_ROOT}/scripts/verify_macos_crash_reporter.sh"
   export TMP_ROOT
   TMP_ROOT="$(mktemp -d)"
   export STUB_BIN="${TMP_ROOT}/bin"

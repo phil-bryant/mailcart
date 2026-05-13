@@ -1,5 +1,6 @@
 #import "OutlookBridgeModels.h"
 
+// #R050: Keep Bridge DTO implementation layer aligned with blocking clang-tidy policy ownership in OutlookClientBridge helpers.
 @implementation OutlookMailcartSummaryDTO
 
 // #R005: Materialize immutable summary DTO values.

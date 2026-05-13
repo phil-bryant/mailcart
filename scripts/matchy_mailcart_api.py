@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 GRAPH_BASE = "https://graph.microsoft.com/v1.0"
 
 
+#R005: Normalize optional Bearer token prefix before Graph usage.
 def _graph_token() -> str:
     token = os.environ.get("OUTLOOK_GRAPH_TOKEN", "").strip()
     if token.startswith("Bearer "):
@@ -22,6 +23,9 @@ def _graph_token() -> str:
     return token
 
 
+#R001: Require an Outlook Graph token for API-backed operations.
+#R010: Build Graph request headers with auth and JSON content negotiation.
+#R015: Fail request processing with explicit error when token is missing.
 def _headers() -> dict[str, str]:
     token = _graph_token()
     if not token:
@@ -49,6 +53,7 @@ def _graph_post(path: str, payload: dict[str, Any]) -> dict[str, Any]:
     return response.json()
 
 
+#R025: Resolve destination mail folder by name, creating it when absent.
 def _get_or_create_folder_id(folder_name: str) -> str:
     folders = _graph_get("/me/mailFolders", params={"$select": "id,displayName", "$top": "200"})
     for row in folders.get("value", []):
@@ -74,6 +79,7 @@ def health() -> dict[str, str]:
 
 
 @app.get("/v1/messages/search")
+#R020: Return recent messages and apply optional text filtering with caller limit.
 def search_messages(query: str = Query(default="", max_length=160), limit: int = Query(default=50, ge=1, le=100)) -> dict[str, Any]:
     payload = _graph_get(
         "/me/messages",
@@ -109,6 +115,7 @@ def search_messages(query: str = Query(default="", max_length=160), limit: int =
 
 
 @app.post("/v1/messages/{message_id}/move")
+#R025: Move selected message into requested destination folder.
 def move_message(message_id: str, request: MoveRequest) -> dict[str, Any]:
     folder_id = _get_or_create_folder_id(request.folder_name)
     response = _graph_post(f"/me/messages/{message_id}/move", {"destinationId": folder_id})

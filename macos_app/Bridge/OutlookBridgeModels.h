@@ -2,6 +2,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+// #R050: Keep Bridge DTO declarations aligned with blocking clang-tidy policy ownership in OutlookClientBridge helpers.
 // #R005: Define immutable Objective-C DTO model contracts.
 // #R030: Provide summary-only DTO shape for search results.
 @interface OutlookMailcartSummaryDTO : NSObject

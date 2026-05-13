@@ -198,6 +198,15 @@ EOF
   chmod +x "${STUB_BIN}/gitleaks"
 }
 
+create_python3_stub() {
+  cat > "${STUB_BIN}/python3" <<'EOF'
+#!/bin/bash
+printf "python3 %s\n" "$*" >> "${TEST_LOG}"
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/python3"
+}
+
 @test "R001: help target documents consolidated workflow targets" {
   #R001
   run_make help
@@ -239,6 +248,42 @@ EOF
   [ "$status" -eq 0 ]
   run rg "^gitleaks +detect --source \. --config \.gitleaks.toml --no-banner --redact --exit-code 1$" "${TEST_LOG}"
   [ "$status" -eq 0 ]
+}
+
+@test "R085: sast prints per-tool headers before each security tool" {
+  #R085
+  create_shellcheck_stub
+  create_semgrep_stub
+  create_clang_tidy_stub
+  create_gitleaks_stub
+  create_xcrun_stub
+  : > "${SANDBOX}/00_verify_requirements_traceability.sh"
+  : > "${SANDBOX}/01_install_prerequisites.sh"
+
+  run_make sast
+  [ "$status" -eq 0 ]
+  [[ "${output}" == *"┌──── ShellCheck ────┐"* ]]
+  [[ "${output}" == *"┌──── Semgrep ────┐"* ]]
+  [[ "${output}" == *"┌──── clang-tidy ────┐"* ]]
+  [[ "${output}" == *"┌──── gitleaks ────┐"* ]]
+}
+
+@test "R090: sast prints per-tool running notifications before each security tool" {
+  #R090
+  create_shellcheck_stub
+  create_semgrep_stub
+  create_clang_tidy_stub
+  create_gitleaks_stub
+  create_xcrun_stub
+  : > "${SANDBOX}/00_verify_requirements_traceability.sh"
+  : > "${SANDBOX}/01_install_prerequisites.sh"
+
+  run_make sast
+  [ "$status" -eq 0 ]
+  [[ "${output}" == *"▶ Running ShellCheck..."* ]]
+  [[ "${output}" == *"▶ Running Semgrep..."* ]]
+  [[ "${output}" == *"▶ Running clang-tidy..."* ]]
+  [[ "${output}" == *"▶ Running gitleaks..."* ]]
 }
 
 @test "R070,R075: sast-report runs non-blocking clang-tidy report config" {
@@ -342,6 +387,7 @@ EOF
   create_bats_stub
   create_kill_stub
   mkdir -p "${SANDBOX}/tests/sh"
+  mkdir -p "${SANDBOX}/scripts"
   mkdir -p "$(dirname "${app_executable}")"
   : > "${SANDBOX}/tests/sh/UI.bats"
   cat > "${app_executable}" <<'EOF'
@@ -375,6 +421,7 @@ EOF
   create_bats_stub
   create_kill_stub
   mkdir -p "${SANDBOX}/tests/sh"
+  mkdir -p "${SANDBOX}/scripts"
   mkdir -p "$(dirname "${app_executable}")"
   : > "${SANDBOX}/tests/sh/UI.bats"
   cat > "${app_executable}" <<'EOF'
@@ -383,12 +430,12 @@ sleep 10
 EOF
   chmod +x "${app_executable}"
   create_ps_stub_alive
-  cat > "${SANDBOX}/17_verify_macos_crash_reporter.sh" <<'EOF'
+  cat > "${SANDBOX}/scripts/verify_macos_crash_reporter.sh" <<'EOF'
 #!/bin/bash
 printf "crash-smoke-script\n" >> "${TEST_LOG}"
 exit 0
 EOF
-  chmod +x "${SANDBOX}/17_verify_macos_crash_reporter.sh"
+  chmod +x "${SANDBOX}/scripts/verify_macos_crash_reporter.sh"
 
   run_make crash-reporter-smoke APP_BUNDLE="${app_bundle}" APP_EXECUTABLE="${app_executable}"
   [ "$status" -eq 0 ]
@@ -400,6 +447,41 @@ EOF
   [ "$status" -eq 0 ]
   [[ "${output}" == *"Running PLCrashReporter smoke verification"* ]]
   run rg "crash-smoke-script" "${TEST_LOG}"
+  [ "$status" -eq 0 ]
+}
+
+@test "R095,R100: make exposes script-backed Matchy and crash alias lanes" {
+  #R095 #R100
+  local app_bundle="${SANDBOX}/app/OutlookMailApp.app"
+  local app_executable="${app_bundle}/Contents/MacOS/OutlookMailApp"
+  create_python3_stub
+  create_ps_stub_alive
+  create_kill_stub
+  mkdir -p "${SANDBOX}/scripts"
+  mkdir -p "$(dirname "${app_executable}")"
+  cat > "${app_executable}" <<'EOF'
+#!/bin/bash
+sleep 10
+EOF
+  chmod +x "${app_executable}"
+  cat > "${SANDBOX}/scripts/verify_macos_crash_reporter.sh" <<'EOF'
+#!/bin/bash
+printf "crash-smoke-script\n" >> "${TEST_LOG}"
+exit 0
+EOF
+  chmod +x "${SANDBOX}/scripts/verify_macos_crash_reporter.sh"
+
+  run_make run-matchy-api
+  [ "$status" -eq 0 ]
+  run_make matchy-mailcart-api
+  [ "$status" -eq 0 ]
+  run rg "^python3 scripts/matchy_mailcart_api.py$" "${TEST_LOG}" --count
+  [ "$status" -eq 0 ]
+  [ "${output}" = "2" ]
+
+  run_make verify-macos-crash-reporter APP_BUNDLE="${app_bundle}" APP_EXECUTABLE="${app_executable}"
+  [ "$status" -eq 0 ]
+  run rg "^crash-smoke-script$" "${TEST_LOG}"
   [ "$status" -eq 0 ]
 }
 

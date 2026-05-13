@@ -12,11 +12,12 @@ APP_EXECUTABLE := $(APP_BUNDLE)/Contents/MacOS/$(APP_NAME)
 OUTLOOK_GRAPH_TOKEN_PSA_ITEM ?= outlook_graph_token
 OUTLOOK_GRAPH_TOKEN_PSA_FIELD ?= password
 
-.DEFAULT_GOAL := build
+.DEFAULT_GOAL := help
 
 .PHONY: help build test ui-test run run-matchy-api crash-reporter-smoke sast sast-report clean \
 	_cpp-test _bridge-check _ui-typecheck _ui-build _ui-rebuild _non-ui-tests _ui-smoke \
-	_sast_shell _sast_semgrep _sast_clang_tidy _sast_clang_tidy_report _sast_secrets
+	_sast_shell _sast_semgrep _sast_clang_tidy _sast_clang_tidy_report _sast_secrets \
+	verify-macos-crash-reporter matchy-mailcart-api
 
 #R001: Expose discoverable developer entrypoints through a help target.
 help:
@@ -27,6 +28,8 @@ help:
 	@echo "  make run     - Build and launch macOS app"
 	@echo "  make run-matchy-api - Run lightweight API for Matchy search/move calls"
 	@echo "  make crash-reporter-smoke - Verify PLCrashReporter crash capture and replay flow"
+	@echo "  make verify-macos-crash-reporter - Run crash reporter verification"
+	@echo "  make matchy-mailcart-api - Run Matchy-compatible API"
 	@echo "  make sast    - Run blocking SAST checks (ShellCheck, Semgrep, clang-tidy, gitleaks)"
 	@echo "  make sast-report - Run non-blocking extended clang-tidy report checks"
 	@echo "  make clean   - Remove local build artifacts"
@@ -53,7 +56,21 @@ ui-test: _ui-build
 	fi
 
 #R045: Expose a consolidated SAST lane for all repository content.
-sast: _sast_shell _sast_semgrep _sast_clang_tidy _sast_secrets
+#R085: Print per-tool headers before each blocking SAST tool lane.
+#R090: Print per-tool running notifications before each blocking SAST tool lane.
+sast:
+	@echo "┌──── ShellCheck ────┐"
+	@echo "▶ Running ShellCheck..."
+	@$(MAKE) _sast_shell
+	@echo "┌──── Semgrep ────┐"
+	@echo "▶ Running Semgrep..."
+	@$(MAKE) _sast_semgrep
+	@echo "┌──── clang-tidy ────┐"
+	@echo "▶ Running clang-tidy..."
+	@$(MAKE) _sast_clang_tidy
+	@echo "┌──── gitleaks ────┐"
+	@echo "▶ Running gitleaks..."
+	@$(MAKE) _sast_secrets
 	@echo "SAST checks completed."
 
 #R070: Expose a non-blocking extended SAST reporting lane.
@@ -76,12 +93,18 @@ run: build
 	APP_PID=$$!; \
 	echo "Launched $(APP_NAME) with Graph token (pid $$APP_PID)."
 
+#R095: Run Matchy-compatible API from scripts path through make entrypoint.
 run-matchy-api:
-	@python3 "18_run_matchy_mailcart_api.py"
+	@python3 "scripts/matchy_mailcart_api.py"
+
+#R100: Expose alias entrypoints for crash and Matchy script lanes.
+verify-macos-crash-reporter: crash-reporter-smoke
+
+matchy-mailcart-api: run-matchy-api
 
 #R080: Expose dedicated crash-reporter smoke verification lane.
 crash-reporter-smoke: _ui-build
-	@./17_verify_macos_crash_reporter.sh
+	@bash "./scripts/verify_macos_crash_reporter.sh"
 
 _cpp-test:
 	@mkdir -p ".build"

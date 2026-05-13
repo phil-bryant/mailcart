@@ -95,11 +95,33 @@ Tests:
 - Verify `_sast_clang_tidy_report` passes `--config-file=.clang-tidy.report` to direct and `xcrun` invocations.
 
 R080  Statement: Provide a dedicated PLCrashReporter smoke verification lane.
-Design: `make crash-reporter-smoke` ensures a UI build exists and runs `./17_verify_macos_crash_reporter.sh`; `make ui-test` optionally runs this lane when `RUN_CRASH_REPORTER_SMOKE_TEST=true` and otherwise prints a skip message.
+Design: `make crash-reporter-smoke` ensures a UI build exists and runs `./scripts/verify_macos_crash_reporter.sh`; `make ui-test` optionally runs this lane when `RUN_CRASH_REPORTER_SMOKE_TEST=true` and otherwise prints a skip message.
 Tests:
 - Run `make crash-reporter-smoke` and verify `_ui-build` and script invocation occur.
 - Run `make ui-test RUN_CRASH_REPORTER_SMOKE_TEST=true` and verify crash-reporter-smoke lane executes.
 - Run `make ui-test` without the flag and verify skip message is printed.
+
+R095  Statement: Expose a Matchy API lane through Makefile script entrypoints.
+Design: `make run-matchy-api` runs `python3 scripts/matchy_mailcart_api.py`, and `make matchy-mailcart-api` aliases to that same lane.
+Tests:
+- Run `make run-matchy-api` with stubbed `python3` and verify `scripts/matchy_mailcart_api.py` is invoked.
+- Run `make matchy-mailcart-api` and verify it delegates to `run-matchy-api`.
+
+R100  Statement: Expose stable alias entrypoints for script-backed crash and Matchy lanes.
+Design: `make verify-macos-crash-reporter` aliases to `crash-reporter-smoke`, and `make matchy-mailcart-api` aliases to `run-matchy-api`.
+Tests:
+- Run `make verify-macos-crash-reporter` and verify crash reporter script lane executes.
+- Run `make matchy-mailcart-api` and verify Matchy API script lane executes.
+
+R085  Statement: Print a per-tool header before each blocking SAST tool execution.
+Design: `make sast` emits a distinct header line for each tool lane (`ShellCheck`, `Semgrep`, `clang-tidy`, `gitleaks`) before invoking the corresponding `_sast_*` target.
+Tests:
+- Run `make sast` with tool stubs and verify output includes all four per-tool header lines in tool-execution order.
+
+R090  Statement: Print a per-tool running notification before each blocking SAST tool execution.
+Design: `make sast` emits an explicit `Running ...` notification for each tool lane (`ShellCheck`, `Semgrep`, `clang-tidy`, `gitleaks`) immediately before invoking the corresponding `_sast_*` target.
+Tests:
+- Run `make sast` with tool stubs and verify output includes all four per-tool running notification lines in tool-execution order.
 
 R040  Statement: Remove generated local artifacts through a clean target.
 Design: `make clean` removes repository `.build` outputs and generated project file path, then prints cleanup confirmation.
@@ -115,3 +137,5 @@ Tests:
 - 2026-05-07: Added `make sast` with ShellCheck, Semgrep, clang-tidy, and gitleaks lanes.
 - 2026-05-07: Split clang-tidy into blocking `make sast` and non-blocking `make sast-report` lanes.
 - 2026-05-07: Added dedicated PLCrashReporter smoke lane and optional `make ui-test` execution toggle.
+- 2026-05-12: Added `make sast` per-tool header and running-notification output requirements.
+- 2026-05-12: Folded crash-reporter and Matchy API make entrypoint requirements into Makefile requirements.

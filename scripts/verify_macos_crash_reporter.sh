@@ -6,7 +6,8 @@ set -euo pipefail
 
 #R005: Execute from repository root regardless of caller directory.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+cd "$REPO_ROOT"
 
 APP_EXECUTABLE="${APP_EXECUTABLE:-.build/ui/DerivedData/Build/Products/Debug/OutlookMailApp.app/Contents/MacOS/OutlookMailApp}"
 CRASH_REPORT_DIR="${CRASH_REPORT_DIR:-${HOME}/Library/Application Support/com.local.outlookmailapp/CrashReports}"

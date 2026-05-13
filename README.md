@@ -126,7 +126,7 @@ Use `OUTLOOK_MACOS_FORCE_CRASH_ON_LAUNCH=1` to intentionally crash for local ver
 
 Run the dedicated smoke verifier from repo root:
 
-- `./17_verify_macos_crash_reporter.sh`
+- `./scripts/verify_macos_crash_reporter.sh`
 - `make crash-reporter-smoke`
 
 To include this smoke lane in `make ui-test` runs:
@@ -174,7 +174,42 @@ If CI is added later, use the same sequence to keep local and CI checks aligned.
 
 To provide Matchy-compatible endpoints for search and move:
 
-- Run `python3 18_run_matchy_mailcart_api.py`
+- Run `python3 scripts/matchy_mailcart_api.py`
+- Or run `make run-matchy-api`
 - Endpoints:
   - `GET /v1/messages/search?query=...&limit=...`
   - `POST /v1/messages/{message_id}/move` with `{ "folder_name": "matchy" }`
+
+## GLOBAL ARCHITECTURE: TELLER → MATCHY ← MAILCART
+```text
+┌───────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                            SYSTEM LANDSCAPE                                           │
+│                                                                                                       │
+│  ┌────────────────────────────────┐      HTTP (search/move)       ┌────────────────────────────────┐  │
+│  │             MATCHY             │ ────────────────────────────► │            MAILCART            │  │
+│  │                                │ ◄──────────────────────────── │                                │  │
+│  │ - FastAPI service              │        message candidates     │ - Outlook/Graph integration    │  │
+│  │ - Runs transaction↔email match │                               │ - Search endpoint for emails   │  │
+│  │ - Combines scoring + AI ranker │                               │ - Move endpoint to folder      │  │
+│  │ - Writes run/candidate/match   │                               │   `matchy`                     │  │
+│  │   records to Teller DB         │                               └────────────────────────────────┘  │
+│  └───────────────┬────────────────┘                                                                   │
+│                  │ SQL read/write                                                                     │
+│                  ▼                                                                                    │
+│  ┌──────────────────────────────────────────────────────────┐                                         │
+│  │                      TELLER DB                           │                                         │
+│  │                                                          │                                         │
+│  │ - Source transactions: `teller.transaction`              │                                         │
+│  │ - Match run table: `teller.transaction_email_match_run`  │                                         │
+│  │ - Candidates table: `teller.transaction_email_candidate` │                                         │
+│  │ - Match table: `teller.transaction_email_match`          │                                         │
+│  └──────────────────────────────────────────────────────────┘                                         │
+│                                                                                                       │
+└───────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+TRIGGER FLOW
+┌─────────────────────────────┐      POST /v1/matchy/runs       ┌────────────────────────────┐
+│ Caller (manual/auto/retry)  │───────────────────────────────► │ Matchy API                 │
+│ (operator/job in ecosystem) │                                 │ validates ids + starts run │
+└───────────────────────────√─┘                                 └────────────────────────────┘
+```

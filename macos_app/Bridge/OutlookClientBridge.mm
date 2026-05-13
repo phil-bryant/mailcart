@@ -17,6 +17,20 @@ namespace
   const int kGraphSearchFetchLimit = 50;
   NSString *const kCursorPrefix = @"__cursor__";
 
+  // #R050: Group request-related NSString values into typed structs to avoid swappable-parameter SAST regressions.
+  struct GraphRequestHeaders
+  {
+    NSString *method;
+    NSString *accept;
+    NSString *content_type;
+  };
+
+  struct MoveMessageRequest
+  {
+    NSString *message_id;
+    NSString *folder_name;
+  };
+
   // #R010: Convert C++ UTF-8 strings into Foundation strings.
   NSString * _Nonnull ToNSString(const std::string &value)
   {
@@ -189,9 +203,7 @@ namespace
   NSData *FetchGraphRequestData(
       NSURL *url,
       NSString *token,
-      NSString *method,
-      NSString *accept,
-      NSString *content_type,
+      const GraphRequestHeaders &headers,
       NSData *body_data,
       NSString **error_text)
   {
@@ -208,16 +220,16 @@ namespace
     else
     {
       NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
-      request.HTTPMethod = method;
+      request.HTTPMethod = headers.method;
       NSString *authorization_header = [NSString stringWithFormat:@"Bearer %@", token];
       [request setValue:authorization_header forHTTPHeaderField:@"Authorization"];
-      if (accept.length > 0)
+      if (headers.accept.length > 0)
       {
-        [request setValue:accept forHTTPHeaderField:@"Accept"];
+        [request setValue:headers.accept forHTTPHeaderField:@"Accept"];
       }
-      if (content_type.length > 0)
+      if (headers.content_type.length > 0)
       {
-        [request setValue:content_type forHTTPHeaderField:@"Content-Type"];
+        [request setValue:headers.content_type forHTTPHeaderField:@"Content-Type"];
       }
       if (body_data != nil)
       {
@@ -316,12 +328,15 @@ namespace
     NSData *body_data = [NSJSONSerialization dataWithJSONObject:body options:0 error:nil];
     NSURL *create_url = [NSURL URLWithString:@"https://graph.microsoft.com/v1.0/me/mailFolders"];
     NSString *request_error = @"";
+    GraphRequestHeaders create_headers = {
+      @"POST",
+      @"application/json",
+      @"application/json"
+    };
     NSData *created_payload = FetchGraphRequestData(
         create_url,
         token,
-        @"POST",
-        @"application/json",
-        @"application/json",
+        create_headers,
         body_data,
         &request_error);
     if (created_payload == nil)
@@ -334,7 +349,7 @@ namespace
     return JsonStringOrEmpty(root[@"id"]);
   }
 
-  BOOL MoveMessageToFolder(NSString *message_id, NSString *folder_name)
+  BOOL MoveMessageToFolder(const MoveMessageRequest &request)
   {
     BOOL moved = NO;
     NSString *token = ResolveGraphToken();
@@ -342,22 +357,25 @@ namespace
     {
       return moved;
     }
-    NSString *destination_folder_id = EnsureMailFolderId(folder_name);
+    NSString *destination_folder_id = EnsureMailFolderId(request.folder_name);
     if (destination_folder_id.length == 0)
     {
       return moved;
     }
-    NSString *encoded_message_id = [message_id stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLPathAllowedCharacterSet]];
+    NSString *encoded_message_id = [request.message_id stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLPathAllowedCharacterSet]];
     NSString *move_url_text = [NSString stringWithFormat:@"https://graph.microsoft.com/v1.0/me/messages/%@/move", encoded_message_id];
     NSURL *move_url = [NSURL URLWithString:move_url_text];
     NSDictionary *body = @{@"destinationId" : destination_folder_id};
     NSData *body_data = [NSJSONSerialization dataWithJSONObject:body options:0 error:nil];
+    GraphRequestHeaders move_headers = {
+      @"POST",
+      @"application/json",
+      @"application/json"
+    };
     NSData *response_data = FetchGraphRequestData(
         move_url,
         token,
-        @"POST",
-        @"application/json",
-        @"application/json",
+        move_headers,
         body_data,
         nullptr);
     moved = (response_data != nil);
@@ -817,7 +835,11 @@ class BridgeOutlookParser : public OutlookPayloadParser
   {
     resolved_folder_name = @"matchy";
   }
-  return MoveMessageToFolder(messageId, resolved_folder_name);
+  MoveMessageRequest request = {
+    messageId,
+    resolved_folder_name
+  };
+  return MoveMessageToFolder(request);
 }
 
 @end
