@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import os
+import socket
+import subprocess
 from typing import Any
 
 import requests
@@ -18,8 +20,30 @@ GRAPH_BASE = "https://graph.microsoft.com/v1.0"
 #R005: Normalize optional Bearer token prefix before Graph usage.
 def _graph_token() -> str:
     token = os.environ.get("OUTLOOK_GRAPH_TOKEN", "").strip()
+    if not token:
+        token = _token_from_1psa()
     if token.startswith("Bearer "):
         token = token[7:].strip()
+    return token
+
+
+def _token_from_1psa() -> str:
+    item = os.environ.get("OUTLOOK_GRAPH_TOKEN_PSA_ITEM", "outlook_graph_token").strip()
+    field = os.environ.get("OUTLOOK_GRAPH_TOKEN_PSA_FIELD", "password").strip()
+    token = ""
+    try:
+        completed = subprocess.run(
+            ["1psa", "-f", item, field],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        token = completed.stdout.strip()
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=500, detail="1psa is required to resolve OUTLOOK_GRAPH_TOKEN") from exc
+    except subprocess.CalledProcessError as exc:
+        detail = exc.stderr.strip() if exc.stderr else "unknown 1psa error"
+        raise HTTPException(status_code=500, detail=f"Unable to resolve OUTLOOK_GRAPH_TOKEN via 1psa: {detail}") from exc
     return token
 
 
@@ -81,24 +105,35 @@ def health() -> dict[str, str]:
 @app.get("/v1/messages/search")
 #R020: Return recent messages and apply optional text filtering with caller limit.
 def search_messages(query: str = Query(default="", max_length=160), limit: int = Query(default=50, ge=1, le=100)) -> dict[str, Any]:
-    payload = _graph_get(
-        "/me/messages",
-        params={
-            "$select": "id,subject,bodyPreview,receivedDateTime,from",
-            "$orderby": "receivedDateTime DESC",
-            "$top": str(max(limit, 50)),
-        },
-    )
-    normalized_query = query.strip().lower()
+    payload: dict[str, Any] = {"value": []}
+    normalized_query = query.strip()
+    if normalized_query:
+        try:
+            payload = _graph_get(
+                "/me/messages",
+                params={"$select": "id,subject,bodyPreview,receivedDateTime,from", "$search": f"\"{normalized_query}\"", "$top": str(limit)},
+            )
+        except HTTPException:
+            payload = {"value": []}
+    if not payload.get("value"):
+        payload = _graph_get(
+            "/me/messages",
+            params={
+                "$select": "id,subject,bodyPreview,receivedDateTime,from",
+                "$orderby": "receivedDateTime DESC",
+                "$top": str(max(limit * 8, 200) if normalized_query else max(limit, 50)),
+            },
+        )
+    normalized_query_lc = normalized_query.lower()
     messages = []
     for row in payload.get("value", []):
         subject = str(row.get("subject", ""))
         preview = str(row.get("bodyPreview", ""))
-        if normalized_query:
-            blob = f"{subject} {preview}".lower()
-            if normalized_query not in blob:
+        sender = str((((row.get("from") or {}).get("emailAddress") or {}).get("address")) or "")
+        if normalized_query_lc:
+            blob = f"{subject} {preview} {sender}".lower()
+            if normalized_query_lc not in blob:
                 continue
-        sender = str((((row.get("from") or {}).get("mailcartAddress") or {}).get("address")) or "")
         messages.append(
             {
                 "message_id": str(row.get("id", "")),
@@ -123,4 +158,22 @@ def move_message(message_id: str, request: MoveRequest) -> dict[str, Any]:
 
 
 if __name__ == "__main__":
+    in_use = False
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.settimeout(0.25)
+    if sock.connect_ex(("127.0.0.1", 8788)) == 0:
+        in_use = True
+    sock.close()
+    if in_use:
+        healthy = False
+        try:
+            probe = requests.get("http://127.0.0.1:8788/health", timeout=1.5)
+            if probe.status_code == 200 and '"status":"ok"' in probe.text:
+                healthy = True
+        except Exception:
+            healthy = False
+        if healthy:
+            print("Mailcart API already running on 127.0.0.1:8788; reusing existing process.")
+            raise SystemExit(0)
+        raise SystemExit("Port 8788 is already in use by another process.")
     uvicorn.run(app, host="127.0.0.1", port=8788)
