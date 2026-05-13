@@ -782,14 +782,16 @@ EOF
   [ "$status" -eq 0 ]
 }
 
-@test "R040: clean target removes sandbox build outputs and generated project file" {
+@test "R040: clean target removes sandbox build outputs, generated project file, and profraw artifact" {
   #R040
   mkdir -p "${SANDBOX}/.build"
   : > "${SANDBOX}/.build/artifact.tmp"
   : > "${SANDBOX}/Generated.xcodeproj"
+  : > "${SANDBOX}/default.profraw"
 
   run_make clean PROJECT_FILE="${SANDBOX}/Generated.xcodeproj"
   [ "$status" -eq 0 ]
   [ ! -e "${SANDBOX}/.build/artifact.tmp" ]
   [ ! -e "${SANDBOX}/Generated.xcodeproj" ]
+  [ ! -e "${SANDBOX}/default.profraw" ]
 }

@@ -167,7 +167,7 @@ Tests:
 - Run `make sast` with tool stubs and verify output includes all five per-tool running notification lines in tool-execution order.
 
 R040  Statement: Remove generated local artifacts through a clean target.
-Design: `make clean` removes repository `.build` outputs and generated project file path, then prints cleanup confirmation.
+Design: `make clean` removes repository `.build` outputs, generated project file path, and local `default.profraw` profiling artifact, then prints cleanup confirmation.
 Tests:
 - Create `.build` artifacts and generated project file, run `make clean`, and verify removal.
 - Run `make clean` repeatedly and verify idempotent success.
@@ -193,3 +193,4 @@ Tests:
 - 2026-05-13: Added UI lane controls for `make ui-test` smoke execution via `RUN_UI_SMOKE_TEST`.
 - 2026-05-13: Moved shell BATS ownership to `make test` and switched `make ui-test` to inline non-BATS UI regression checks plus smoke.
 - 2026-05-13: Replaced ad-hoc runtime automation lane with Teller-style XCUITest `xcodebuild test` lane in `make ui-test`.
+- 2026-05-13: Extended `make clean` requirements to remove `default.profraw` profiling artifacts.

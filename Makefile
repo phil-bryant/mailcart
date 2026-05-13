@@ -529,5 +529,5 @@ _sast_secrets:
 
 #R040: Remove generated local artifacts through clean target.
 clean:
-	@rm -rf ".build" "$(SAST_REPORT_DIR)" "$(PROJECT_FILE)"
+	@rm -rf ".build" "$(SAST_REPORT_DIR)" "$(PROJECT_FILE)" "default.profraw"
 	@echo "Cleaned .build artifacts."
