@@ -9,6 +9,12 @@
 .build/
 #R001: Exclude generated SAST reports from version control.
 reports/sast/
+#R030: Exclude generated dependency freshness reports from version control.
+reports/dependency-freshness/
+#R025: Exclude local Python virtual environment directories.
+.venv/
+#R025: Exclude named project virtual environment directories.
+*-venv/
 #R005: Exclude Xcode DerivedData and user-specific metadata.
 DerivedData/
 *.xcuserdatad/
