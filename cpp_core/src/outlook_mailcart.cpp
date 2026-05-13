@@ -132,7 +132,7 @@ int OutlookAttachment::sizeInBytes() const
 }
 
 // #R025: Materialize Outlook mailcart entities from JSON fields with default-empty fallback.
-OutlookMailcart::OutlookMailcart(const OutlookJsonObject &json_object)
+OutlookMailcart::OutlookMailcart(const OutlookJsonObject &json_object) noexcept(false)
     : Mailcart(
           json_object.stringFieldOrDefault("sender", ""),
           json_object.stringFieldOrDefault("recipient", ""),

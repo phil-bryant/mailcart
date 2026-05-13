@@ -85,7 +85,11 @@ final class OutlookMailViewModel: ObservableObject {
     func openAttachment(_ attachment: OutlookAttachmentDTO) {
         // #R080: Open requested attachment from selected message context.
         if let mailcart = selectedMailcart {
-            let opened = bridge.openAttachment(withMessageId: mailcart.messageId, attachmentId: attachment.attachmentId, fileName: attachment.fileName)
+            let opened = bridge.openAttachment(
+                withMessageId: mailcart.messageId,
+                attachmentId: attachment.attachmentId,
+                fileName: attachment.fileName
+            )
             if !opened {
                 errorMessage = "Could not open attachment \(attachment.fileName)."
             }
@@ -93,7 +97,7 @@ final class OutlookMailViewModel: ObservableObject {
     }
 
     private func scheduleSearch(isInitialLoad: Bool) {
-        latestSearchGeneration = latestSearchGeneration + 1
+        latestSearchGeneration += 1
         let generation = latestSearchGeneration
         let shouldDebounce = !isInitialLoad
         searchTask?.cancel()

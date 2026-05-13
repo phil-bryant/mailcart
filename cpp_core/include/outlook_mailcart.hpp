@@ -31,10 +31,11 @@ class OutlookAttachment
   int size_in_bytes_;
 };
 
-// NOLINTNEXTLINE(bugprone-exception-escape)
 class OutlookMailcart : public Mailcart
 { public:
-  explicit OutlookMailcart(const OutlookJsonObject &json_object);
+  explicit OutlookMailcart(const OutlookJsonObject &json_object) noexcept(false);
+  OutlookMailcart(const OutlookMailcart &other) noexcept(false) = default;
+  OutlookMailcart &operator=(const OutlookMailcart &other) noexcept(false) = default;
   [[nodiscard]] const std::string &messageId() const;
   [[nodiscard]] const std::string &receivedAt() const;
   [[nodiscard]] const std::string &bodyText() const;

@@ -74,7 +74,7 @@ enum CrashReporterService {
             "version": Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown",
             "build": Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "unknown",
             "captured_at": ISO8601DateFormatter().string(from: Date()),
-            "format": "plcrash",
+            "format": "plcrash"
         ]
         let metadataData = try JSONSerialization.data(withJSONObject: metadata, options: [.prettyPrinted, .sortedKeys])
         try metadataData.write(to: metadataURL, options: .atomic)

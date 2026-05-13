@@ -88,14 +88,14 @@ struct OutlookMailContentView: View {
                 // #R070: Explicit load-more action fetches next page from bridge cursor.
                 Button(action: {
                     viewModel.loadMoreMailcarts()
-                }) {
+                }, label: {
                     if viewModel.isLoadingMore {
                         ProgressView()
                             .controlSize(.small)
                     } else {
                         Text("Load more mailcarts")
                     }
-                }
+                })
                 .disabled(viewModel.canLoadMore == false)
                 .padding(.horizontal, 12)
                 .padding(.bottom, 12)
