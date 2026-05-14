@@ -1,6 +1,6 @@
 import Foundation
 
-protocol OutlookBridgeClient: AnyObject {
+protocol OutlookBridgeClient: AnyObject, Sendable {
     var isUITestingFixture: Bool { get }
     func searchMailcarts(withQuery query: String, limit: Int, cursor: String) -> OutlookSearchResultDTO
     func readMailcart(withMessageId messageId: String) -> OutlookMailcartDTO
@@ -51,58 +51,84 @@ final class UITestingFixtureBridge: NSObject, OutlookBridgeClient, @unchecked Se
     private let records: [FixtureMailcartRecord]
 
     init(processInfo: ProcessInfo = .processInfo) {
-        pageSize = Int(processInfo.environment["MAILCART_UI_TEST_PAGE_SIZE"] ?? "2") ?? 2
-        records = [
-            FixtureMailcartRecord(
-                messageId: "msg_001",
-                subject: "Coffee Roasters weekly update",
-                preview: "Your order receipt and points update are ready.",
-                receivedAt: "2026-05-12T10:30:00Z",
-                sender: "coffee@example.com",
-                recipient: "user@example.com",
-                bodyText: "Thanks for your coffee order.",
-                bodyHTML: "<p>Thanks for your <strong>coffee</strong> order.</p>",
-                attachments: [
-                    OutlookAttachmentDTO(attachmentId: "att_001", fileName: "receipt.pdf", contentType: "application/pdf", sizeInBytes: 12400)
-                ]
-            ),
-            FixtureMailcartRecord(
-                messageId: "msg_002",
-                subject: "Electric Utility Co statement",
-                preview: "Your monthly utility statement is available.",
-                receivedAt: "2026-05-11T09:00:00Z",
-                sender: "billing@utility.example.com",
-                recipient: "user@example.com",
-                bodyText: "Utility statement enclosed.",
-                bodyHTML: "",
-                attachments: []
-            ),
-            FixtureMailcartRecord(
-                messageId: "msg_003",
-                subject: "City Transit Card refill notice",
-                preview: "Auto-refill will process tomorrow.",
-                receivedAt: "2026-05-10T08:00:00Z",
-                sender: "transit@example.com",
-                recipient: "user@example.com",
-                bodyText: "Your transit card auto-refill is scheduled.",
-                bodyHTML: "<p>Your transit card <em>auto-refill</em> is scheduled.</p>",
-                attachments: []
-            ),
-            FixtureMailcartRecord(
-                messageId: "msg_004",
-                subject: "Airline Luggage Fee confirmation",
-                preview: "Additional baggage fee has been confirmed.",
-                receivedAt: "2026-05-09T07:30:00Z",
-                sender: "travel@example.com",
-                recipient: "user@example.com",
-                bodyText: "Baggage fee confirmation details attached.",
-                bodyHTML: "",
-                attachments: [
-                    OutlookAttachmentDTO(attachmentId: "att_002", fileName: "itinerary.txt", contentType: "text/plain", sizeInBytes: 740)
-                ]
-            ),
-        ]
+        pageSize = Self.resolvedPageSize(processInfo)
+        records = Self.fixtureRecords()
         super.init()
+    }
+
+    private static func resolvedPageSize(_ processInfo: ProcessInfo) -> Int {
+        Int(processInfo.environment["MAILCART_UI_TEST_PAGE_SIZE"] ?? "2") ?? 2
+    }
+
+    private static func fixtureRecords() -> [FixtureMailcartRecord] {
+        [
+            fixtureRecord001(),
+            fixtureRecord002(),
+            fixtureRecord003(),
+            fixtureRecord004()
+        ]
+    }
+
+    private static func fixtureRecord001() -> FixtureMailcartRecord {
+        FixtureMailcartRecord(
+            messageId: "msg_001",
+            subject: "Coffee Roasters weekly update",
+            preview: "Your order receipt and points update are ready.",
+            receivedAt: "2026-05-12T10:30:00Z",
+            sender: "coffee@example.com",
+            recipient: "user@example.com",
+            bodyText: "Thanks for your coffee order.",
+            bodyHTML: "<p>Thanks for your <strong>coffee</strong> order.</p>",
+            attachments: [
+                // swiftlint:disable:next line_length
+                OutlookAttachmentDTO(attachmentId: "att_001", fileName: "receipt.pdf", contentType: "application/pdf", sizeInBytes: 12400)
+            ]
+        )
+    }
+
+    private static func fixtureRecord002() -> FixtureMailcartRecord {
+        FixtureMailcartRecord(
+            messageId: "msg_002",
+            subject: "Electric Utility Co statement",
+            preview: "Your monthly utility statement is available.",
+            receivedAt: "2026-05-11T09:00:00Z",
+            sender: "billing@utility.example.com",
+            recipient: "user@example.com",
+            bodyText: "Utility statement enclosed.",
+            bodyHTML: "",
+            attachments: []
+        )
+    }
+
+    private static func fixtureRecord003() -> FixtureMailcartRecord {
+        FixtureMailcartRecord(
+            messageId: "msg_003",
+            subject: "City Transit Card refill notice",
+            preview: "Auto-refill will process tomorrow.",
+            receivedAt: "2026-05-10T08:00:00Z",
+            sender: "transit@example.com",
+            recipient: "user@example.com",
+            bodyText: "Your transit card auto-refill is scheduled.",
+            bodyHTML: "<p>Your transit card <em>auto-refill</em> is scheduled.</p>",
+            attachments: []
+        )
+    }
+
+    private static func fixtureRecord004() -> FixtureMailcartRecord {
+        FixtureMailcartRecord(
+            messageId: "msg_004",
+            subject: "Airline Luggage Fee confirmation",
+            preview: "Additional baggage fee has been confirmed.",
+            receivedAt: "2026-05-09T07:30:00Z",
+            sender: "travel@example.com",
+            recipient: "user@example.com",
+            bodyText: "Baggage fee confirmation details attached.",
+            bodyHTML: "",
+            attachments: [
+                // swiftlint:disable:next line_length
+                OutlookAttachmentDTO(attachmentId: "att_002", fileName: "itinerary.txt", contentType: "text/plain", sizeInBytes: 740)
+            ]
+        )
     }
 
     func searchMailcarts(withQuery query: String, limit: Int, cursor: String) -> OutlookSearchResultDTO {
@@ -121,6 +147,7 @@ final class UITestingFixtureBridge: NSObject, OutlookBridgeClient, @unchecked Se
         let upperBound = min(filtered.count, safeOffset + effectiveLimit)
         let page = Array(filtered[safeOffset..<upperBound])
         let summaries = page.map {
+            // swiftlint:disable:next line_length
             OutlookMailcartSummaryDTO(messageId: $0.messageId, subject: $0.subject, preview: $0.preview, receivedAt: $0.receivedAt)
         }
         let nextCursor = upperBound < filtered.count ? String(upperBound) : ""

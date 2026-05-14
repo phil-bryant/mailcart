@@ -10,6 +10,7 @@ XCUITEST_PROJECT ?= $(PROJECT_FILE)
 XCUITEST_SCHEME ?= MailcartUITests
 XCUITEST_DESTINATION ?= platform=macOS
 XCUITEST_DERIVED_DATA_PATH ?= $(UI_BUILD_DIR)/DerivedDataUITests
+BUILD_DESTINATION ?= platform=macOS,arch=arm64
 SAST_REPORT_DIR ?= reports/sast
 APP_BUNDLE := $(DERIVED_DATA)/Build/Products/$(CONFIGURATION)/$(APP_NAME).app
 APP_EXECUTABLE := $(APP_BUNDLE)/Contents/MacOS/$(APP_NAME)
@@ -391,6 +392,7 @@ _ui-rebuild:
 		-project "$(PROJECT_FILE)" \
 		-scheme "$(SCHEME)" \
 		-configuration "$(CONFIGURATION)" \
+		-destination "$(BUILD_DESTINATION)" \
 		-derivedDataPath "$(DERIVED_DATA)" \
 		CODE_SIGNING_ALLOWED=NO \
 		clean build

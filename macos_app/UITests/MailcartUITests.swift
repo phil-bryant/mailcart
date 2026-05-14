@@ -92,11 +92,13 @@ final class MailcartUITests: XCTestCase {
         XCTAssertTrue(cityRow.waitForExistence(timeout: timeout))
         cityRow.click()
         XCTAssertTrue(app.staticTexts["mailcart.detailSubject"].waitForExistence(timeout: timeout))
+        // swiftlint:disable:next line_length
         XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "mailcart.renderedBody").firstMatch.waitForExistence(timeout: timeout))
 
         let renderedMode = app.descendants(matching: .any).matching(identifier: "mailcart.bodyModeRendered").firstMatch
         XCTAssertTrue(renderedMode.waitForExistence(timeout: timeout))
         renderedMode.click()
+        // swiftlint:disable:next line_length
         XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "mailcart.renderedBody").firstMatch.waitForExistence(timeout: timeout))
 
         let rawMode = app.descendants(matching: .any).matching(identifier: "mailcart.bodyModeRaw").firstMatch

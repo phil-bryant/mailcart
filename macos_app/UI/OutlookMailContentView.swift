@@ -140,6 +140,7 @@ struct OutlookMailContentView: View {
                             ForEach(BodyDisplayMode.allCases) { mode in
                                 Text(mode.rawValue)
                                     .tag(mode)
+                                    // swiftlint:disable:next line_length
                                     .accessibilityIdentifier(mode == .rendered ? "mailcart.bodyModeRendered" : "mailcart.bodyModeRaw")
                             }
                         }

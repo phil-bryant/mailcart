@@ -169,28 +169,18 @@ namespace
 
   NSData *PerformRequestSynchronously(NSURLRequest *request, NSHTTPURLResponse **http_response, NSError **request_error)
   {
-    __block NSData *captured_data = nil;
-    __block NSHTTPURLResponse *captured_http_response = nil;
-    __block NSError *captured_error = nil;
-    dispatch_semaphore_t wait_semaphore = dispatch_semaphore_create(0);
-    NSURLSessionConfiguration *configuration = [NSURLSessionConfiguration ephemeralSessionConfiguration];
-    configuration.URLCache = nil;
-    configuration.requestCachePolicy = NSURLRequestReloadIgnoringLocalCacheData;
-    NSURLSession *session = [NSURLSession sessionWithConfiguration:configuration];
-    NSURLSessionDataTask *task =
-        [session dataTaskWithRequest:request
-                   completionHandler:^(NSData *_Nullable data, NSURLResponse *_Nullable response, NSError *_Nullable error) {
-                     captured_data = data;
-                     if ([response isKindOfClass:[NSHTTPURLResponse class]])
-                     {
-                       captured_http_response = (NSHTTPURLResponse *)response;
-                     }
-                     captured_error = error;
-                     dispatch_semaphore_signal(wait_semaphore);
-                   }];
-    [task resume];
-    dispatch_semaphore_wait(wait_semaphore, DISPATCH_TIME_FOREVER);
-    [session finishTasksAndInvalidate];
+    NSData *captured_data = nil;
+    NSHTTPURLResponse *captured_http_response = nil;
+    NSError *captured_error = nil;
+    NSURLResponse *captured_response = nil;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    captured_data = [NSURLConnection sendSynchronousRequest:request returningResponse:&captured_response error:&captured_error];
+#pragma clang diagnostic pop
+    if ([captured_response isKindOfClass:[NSHTTPURLResponse class]])
+    {
+      captured_http_response = (NSHTTPURLResponse *)captured_response;
+    }
     if (http_response != nil)
     {
       *http_response = captured_http_response;

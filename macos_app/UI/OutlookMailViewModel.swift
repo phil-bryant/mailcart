@@ -169,6 +169,7 @@ final class OutlookMailViewModel: ObservableObject {
         let token = environment["OUTLOOK_GRAPH_TOKEN"] ?? ""
         let message: String?
         if token.isEmpty {
+            // swiftlint:disable:next line_length
             message = "Missing OUTLOOK_GRAPH_TOKEN. Configure token and relaunch with make run. Get a token from \(Self.graphExplorerURL)."
         } else {
             message = nil
