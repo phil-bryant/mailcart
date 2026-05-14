@@ -4,8 +4,9 @@
 from __future__ import annotations
 
 import os
+import shutil
 import socket
-import subprocess
+import subprocess  # nosec B404
 from typing import Any
 
 import requests
@@ -15,6 +16,8 @@ from pydantic import BaseModel, Field
 
 
 GRAPH_BASE = "https://graph.microsoft.com/v1.0"
+DEFAULT_PSA_ITEM = "outlook_graph_token"
+DEFAULT_PSA_FIELD = "password"
 
 
 #R005: Normalize optional Bearer token prefix before Graph usage.
@@ -28,23 +31,31 @@ def _graph_token() -> str:
 
 
 def _token_from_1psa() -> str:
-    item = os.environ.get("OUTLOOK_GRAPH_TOKEN_PSA_ITEM", "outlook_graph_token").strip()
-    field = os.environ.get("OUTLOOK_GRAPH_TOKEN_PSA_FIELD", "password").strip()
-    token = ""
+    item = os.environ.get("OUTLOOK_GRAPH_TOKEN_PSA_ITEM", DEFAULT_PSA_ITEM).strip()
+    # Default "password" is the standard 1Password field name, not an embedded credential.
+    field = os.environ.get("OUTLOOK_GRAPH_TOKEN_PSA_FIELD", DEFAULT_PSA_FIELD).strip()
+    if not item:
+        raise HTTPException(status_code=500, detail="OUTLOOK_GRAPH_TOKEN_PSA_ITEM cannot be empty")
+    if not field:
+        raise HTTPException(status_code=500, detail="OUTLOOK_GRAPH_TOKEN_PSA_FIELD cannot be empty")
+    psa_path = shutil.which("1psa")
+    if not psa_path:
+        raise HTTPException(status_code=500, detail="1psa is required to resolve OUTLOOK_GRAPH_TOKEN")
     try:
+        # Arguments are explicit, shell is disabled, and executable path is resolved via shutil.which.
         completed = subprocess.run(
-            ["1psa", "-f", item, field],
+            [psa_path, "-f", item, field],
             check=True,
             capture_output=True,
             text=True,
+            shell=False,  # nosec B603
         )
-        token = completed.stdout.strip()
+        return completed.stdout.strip()
     except FileNotFoundError as exc:
         raise HTTPException(status_code=500, detail="1psa is required to resolve OUTLOOK_GRAPH_TOKEN") from exc
     except subprocess.CalledProcessError as exc:
         detail = exc.stderr.strip() if exc.stderr else "unknown 1psa error"
         raise HTTPException(status_code=500, detail=f"Unable to resolve OUTLOOK_GRAPH_TOKEN via 1psa: {detail}") from exc
-    return token
 
 
 #R001: Require an Outlook Graph token for API-backed operations.
