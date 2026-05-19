@@ -40,7 +40,7 @@ Tests:
 - Set an invalid scheme and verify `make build` fails non-zero with `xcodebuild` error output.
 
 R030  Statement: Launch the built app bundle through a dedicated run target.
-Design: `make run` depends on `build`, resolves `OUTLOOK_GRAPH_TOKEN` via `1psa -f <item> <field>`, fails with setup guidance when token retrieval fails, and launches the built app executable with that token in its environment.
+Design: `make run` depends on `build`, resolves `OUTLOOK_GRAPH_TOKEN` via `1psa -f <item> <field>`, optionally warms the shared token cache when `OUTLOOK_GRAPH_CLIENT_ID` is set, exports `MAILCART_REPO_ROOT` and `OUTLOOK_GRAPH_CLIENT_ID`, fails with setup guidance when token retrieval fails, and launches the built app executable with that token in its environment.
 Tests:
 - Run `make run` and verify `build` executes first when no binary exists.
 - Verify `make run` invokes `1psa` for token retrieval and launches the configured app executable with `OUTLOOK_GRAPH_TOKEN` set.
@@ -145,7 +145,7 @@ Tests:
 - Run `make ui-test` without the flag and verify no skip message is printed.
 
 R095  Statement: Expose a Matchy API lane through Makefile script entrypoints.
-Design: `make run-api` runs `python3 scripts/matchy_mailcart_api.py`.
+Design: `make run-api` optionally warms the shared token cache when `OUTLOOK_GRAPH_CLIENT_ID` is set, exports `MAILCART_REPO_ROOT`, and runs `python3 scripts/matchy_mailcart_api.py`.
 Tests:
 - Run `make run-api` with stubbed `python3` and verify `scripts/matchy_mailcart_api.py` is invoked.
 

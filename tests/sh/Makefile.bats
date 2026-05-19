@@ -650,7 +650,7 @@ EOF
 
   run_make run APP_BUNDLE="${app_bundle}" APP_EXECUTABLE="${app_executable}" PROJECT_FILE="${SANDBOX}/Generated.xcodeproj"
   [ "$status" -eq 0 ]
-  run rg "^1psa -f outlook_graph_token password$" "${TEST_LOG}"
+  run rg "^1psa -f OUTLOOK_GRAPH_API token$" "${TEST_LOG}"
   [ "$status" -eq 0 ]
 }
 
@@ -762,7 +762,7 @@ EOF
 
   run_make run-api
   [ "$status" -eq 0 ]
-  run rg "^python3 scripts/matchy_mailcart_api.py$" "${TEST_LOG}" --count
+  run rg "^python3 .+/scripts/matchy_mailcart_api\.py$" "${TEST_LOG}" --count
   [ "$status" -eq 0 ]
   [ "${output}" = "1" ]
 
@@ -776,7 +776,7 @@ EOF
   [ "$status" -eq 0 ]
   run rg "^crash-smoke-script$" "${TEST_LOG}"
   [ "$status" -eq 0 ]
-  run rg "^1psa -f outlook_graph_token password$" "${TEST_LOG}"
+  run rg "^1psa -f OUTLOOK_GRAPH_API token$" "${TEST_LOG}"
   [ "$status" -eq 0 ]
   run rg "^clang-tidy +--config-file=.clang-tidy +cpp_core/src/mailcart.cpp" "${TEST_LOG}"
   [ "$status" -eq 0 ]

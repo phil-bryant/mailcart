@@ -14,8 +14,9 @@ BUILD_DESTINATION ?= platform=macOS,arch=arm64
 SAST_REPORT_DIR ?= reports/sast
 APP_BUNDLE := $(DERIVED_DATA)/Build/Products/$(CONFIGURATION)/$(APP_NAME).app
 APP_EXECUTABLE := $(APP_BUNDLE)/Contents/MacOS/$(APP_NAME)
-OUTLOOK_GRAPH_TOKEN_PSA_ITEM ?= outlook_graph_token
-OUTLOOK_GRAPH_TOKEN_PSA_FIELD ?= password
+OUTLOOK_GRAPH_TOKEN_PSA_ITEM ?= OUTLOOK_GRAPH_API
+OUTLOOK_GRAPH_TOKEN_PSA_FIELD ?= token
+MAILCART_REPO_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 
 .DEFAULT_GOAL := help
 
@@ -182,19 +183,25 @@ run: build
 		echo "1psa is required for make run. Install it with ./01_install_prerequisites.sh"; \
 		exit 1; \
 	fi; \
+	if [ -n "$$OUTLOOK_GRAPH_CLIENT_ID" ]; then \
+		MAILCART_REPO_ROOT="$(MAILCART_REPO_ROOT)" OUTLOOK_GRAPH_CLIENT_ID="$$OUTLOOK_GRAPH_CLIENT_ID" python3 "$(MAILCART_REPO_ROOT)/scripts/refresh_graph_token.py" || true; \
+	fi; \
 	OUTLOOK_GRAPH_TOKEN="$$(1psa -f "$(OUTLOOK_GRAPH_TOKEN_PSA_ITEM)" "$(OUTLOOK_GRAPH_TOKEN_PSA_FIELD)" 2>/dev/null || true)"; \
 	if [ -z "$$OUTLOOK_GRAPH_TOKEN" ]; then \
-		echo "Unable to read outlook_graph_token from 1psa item '$(OUTLOOK_GRAPH_TOKEN_PSA_ITEM)' field '$(OUTLOOK_GRAPH_TOKEN_PSA_FIELD)'."; \
+		echo "Unable to read Outlook Graph token from 1psa item '$(OUTLOOK_GRAPH_TOKEN_PSA_ITEM)' field '$(OUTLOOK_GRAPH_TOKEN_PSA_FIELD)'."; \
 		echo "See README.md for token setup steps."; \
 		exit 1; \
 	fi; \
-	OUTLOOK_GRAPH_TOKEN="$$OUTLOOK_GRAPH_TOKEN" "$(APP_EXECUTABLE)" >/tmp/outlook-ui.log 2>&1 & \
+	MAILCART_REPO_ROOT="$(MAILCART_REPO_ROOT)" OUTLOOK_GRAPH_CLIENT_ID="$$OUTLOOK_GRAPH_CLIENT_ID" OUTLOOK_GRAPH_TOKEN="$$OUTLOOK_GRAPH_TOKEN" "$(APP_EXECUTABLE)" >/tmp/outlook-ui.log 2>&1 & \
 	APP_PID=$$!; \
 	echo "Launched $(APP_NAME) with Graph token (pid $$APP_PID)."
 
 #R095: Run Matchy-compatible API from scripts path through make entrypoint.
 run-api:
-	@python3 "scripts/matchy_mailcart_api.py"
+	@if [ -n "$$OUTLOOK_GRAPH_CLIENT_ID" ]; then \
+		MAILCART_REPO_ROOT="$(MAILCART_REPO_ROOT)" OUTLOOK_GRAPH_CLIENT_ID="$$OUTLOOK_GRAPH_CLIENT_ID" python3 "$(MAILCART_REPO_ROOT)/scripts/refresh_graph_token.py" || true; \
+	fi; \
+	MAILCART_REPO_ROOT="$(MAILCART_REPO_ROOT)" OUTLOOK_GRAPH_CLIENT_ID="$$OUTLOOK_GRAPH_CLIENT_ID" python3 "$(MAILCART_REPO_ROOT)/scripts/matchy_mailcart_api.py"
 
 #R100: Expose stable entrypoints for crash and Matchy script lanes.
 verify-macos-crash-reporter: crash-reporter-smoke

@@ -64,7 +64,7 @@ R050  Statement: Keep `1psa` bootstrap rerunnable and explicit.
 Design: Print dedicated `1psa` phase status, avoid reinstall when already present, and print default token item/field guidance at completion.
 Tests:
 - Run installer twice with `1psa` already installed and verify no reinstall is attempted.
-- Verify success guidance includes default `outlook_graph_token` item and `password` field values.
+- Verify success guidance includes default `OUTLOOK_GRAPH_API` item and `token` field values.
 
 R055  Statement: Ensure SAST tools required by `make sast` are available.
 Design: Installer verifies/install `shellcheck`, `semgrep`, `clang-tidy`, and `gitleaks` before completion so the SAST lane is runnable after prerequisite setup. For Semgrep, installer upgrades the active Semgrep source: use virtualenv `pip` when active `semgrep` resolves inside the current `VIRTUAL_ENV`, otherwise use Homebrew outdated/upgrade flow.

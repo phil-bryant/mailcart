@@ -40,7 +40,7 @@ Use your app registration `CLIENT_ID` from Step 1.
 export CLIENT_ID="<your-app-client-id>"
 DEVICE_RESPONSE="$(curl -sS -X POST "https://login.microsoftonline.com/common/oauth2/v2.0/devicecode" \
   -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "client_id=${CLIENT_ID}&scope=openid profile offline_access https://graph.microsoft.com/Mail.Read")"
+  -d "client_id=${CLIENT_ID}&scope=openid profile offline_access https://graph.microsoft.com/Mail.Read https://graph.microsoft.com/Mail.ReadWrite")"
 ```
 2. Print the verification URL and user code:
 ```bash
@@ -64,7 +64,7 @@ TOKEN_RESPONSE="$(curl -sS -X POST "https://login.microsoftonline.com/common/oau
   -H "Content-Type: application/x-www-form-urlencoded" \
   -d "grant_type=urn:ietf:params:oauth:grant-type:device_code&client_id=${CLIENT_ID}&device_code=${DEVICE_CODE}")"
 ```
-5. Extract token:
+5. Extract tokens and client id:
 ```bash
 OUTLOOK_GRAPH_TOKEN="$(python3 - <<'PY'
 import json, os
@@ -72,47 +72,67 @@ r = json.loads(os.environ["TOKEN_RESPONSE"])
 print(r.get("access_token", ""))
 PY
 )"
+OUTLOOK_GRAPH_REFRESH_TOKEN="$(python3 - <<'PY'
+import json, os
+r = json.loads(os.environ["TOKEN_RESPONSE"])
+print(r.get("refresh_token", ""))
+PY
+)"
+export OUTLOOK_GRAPH_CLIENT_ID="${CLIENT_ID}"
 ```
-6. Validate token is non-empty:
+6. Validate tokens are non-empty:
 ```bash
-[ -n "${OUTLOOK_GRAPH_TOKEN}" ] && echo "token acquired" || echo "token missing"
+[ -n "${OUTLOOK_GRAPH_TOKEN}" ] && echo "access token acquired" || echo "access token missing"
+[ -n "${OUTLOOK_GRAPH_REFRESH_TOKEN}" ] && echo "refresh token acquired" || echo "refresh token missing"
 ```
 
-## Step 3: Store Token in 1Password for 1psa
+## Step 3: Store Tokens in 1Password for 1psa
 
 `1psa` is read-only for item fields. Create/update the item in 1Password UI, then read it with `1psa`.
 
 1. In 1Password, open a vault accessible to the same service account used by `~/.1psa`.
 2. Create or update an item named:
-   - `outlook_graph_token`
-3. Add a text field named:
-   - `password` (default expected by `make run`)
-   - or keep a custom field and override `OUTLOOK_GRAPH_TOKEN_PSA_FIELD`
-4. Paste the token value from `${OUTLOOK_GRAPH_TOKEN}` into that field and save.
+   - `OUTLOOK_GRAPH_API`
+3. Add text fields named:
+   - `token` (default access token field expected by `make run`)
+   - `refresh_token` (required for automatic token refresh)
+   - `application_client_id` (optional if `OUTLOOK_GRAPH_CLIENT_ID` is already exported)
+   - or keep custom field names and override `OUTLOOK_GRAPH_TOKEN_PSA_FIELD` / `OUTLOOK_GRAPH_TOKEN_PSA_REFRESH_FIELD`
+4. Paste `${OUTLOOK_GRAPH_TOKEN}` into `token` and `${OUTLOOK_GRAPH_REFRESH_TOKEN}` into `refresh_token`, and paste `${CLIENT_ID}` into `application_client_id`, then save.
+5. Export your Azure app client id for runtime refresh:
+   - `export OUTLOOK_GRAPH_CLIENT_ID="${CLIENT_ID}"`
+   - Add the same value to your shell profile for `make run` / `make run-api`.
 
-## Step 4: Verify 1psa Reads the Token
+## Step 4: Verify 1psa Reads the Tokens
 
 1. Verify item/field discovery:
-   - `1psa -l outlook_graph_token`
+   - `1psa -l OUTLOOK_GRAPH_API`
 2. Verify field retrieval:
-   - `1psa -f outlook_graph_token password`
+   - `1psa -f OUTLOOK_GRAPH_API token`
+   - `1psa -f OUTLOOK_GRAPH_API refresh_token`
+   - `1psa -f OUTLOOK_GRAPH_API application_client_id`
+3. Warm the shared token cache:
+   - `python3 scripts/refresh_graph_token.py`
 
 If you use different names, set:
 
 - `OUTLOOK_GRAPH_TOKEN_PSA_ITEM`
 - `OUTLOOK_GRAPH_TOKEN_PSA_FIELD`
+- `OUTLOOK_GRAPH_TOKEN_PSA_REFRESH_FIELD`
+- `OUTLOOK_GRAPH_TOKEN_PSA_CLIENT_ID_FIELD`
 
 Example:
 
-- `OUTLOOK_GRAPH_TOKEN_PSA_ITEM=my_graph_item OUTLOOK_GRAPH_TOKEN_PSA_FIELD=token make run`
+- `OUTLOOK_GRAPH_CLIENT_ID=<client-id> OUTLOOK_GRAPH_TOKEN_PSA_ITEM=my_graph_item make run-api`
 
 ## Step 5: Run Against Real Mailcarts
 
 1. Build and launch with token resolution:
    - `make run`
 2. The run target:
+   - Refreshes the shared token cache when `OUTLOOK_GRAPH_CLIENT_ID` is set
    - Reads token using `1psa -f "$OUTLOOK_GRAPH_TOKEN_PSA_ITEM" "$OUTLOOK_GRAPH_TOKEN_PSA_FIELD"`
-   - Exports `OUTLOOK_GRAPH_TOKEN` to the app process
+   - Exports `OUTLOOK_GRAPH_TOKEN`, `OUTLOOK_GRAPH_CLIENT_ID`, and `MAILCART_REPO_ROOT` to the app process
    - Launches the app executable
 
 ## Crash Reporting (PLCrashReporter)
@@ -162,13 +182,14 @@ If CI is added later, use the same sequence to keep local and CI checks aligned.
 
 ## Troubleshooting
 
-- `Unable to read outlook_graph_token from 1psa...`
+- `Unable to read Outlook Graph token from 1psa...`
   - Verify item/field names and service-account vault permissions.
-  - Default lookup is item `outlook_graph_token` and field `password`.
+  - Default lookup is item `OUTLOOK_GRAPH_API` and field `token`.
 - Empty mailbox results with valid login
   - Re-check Graph permission consent for `Mail.Read` and `Mail.ReadWrite`.
 - `401`/`403` behavior in Graph calls
-  - Token expired or missing scope; obtain a new token and update the 1Password field.
+  - Token expired or missing scope; verify `refresh_token` is stored in 1Password and `OUTLOOK_GRAPH_CLIENT_ID` is exported, then run `python3 scripts/refresh_graph_token.py`.
+  - Restart `make run-api` if the API process on port 8788 was started before refresh credentials were configured.
 - `1psa` not found
   - Re-run `./01_install_prerequisites.sh`.
 

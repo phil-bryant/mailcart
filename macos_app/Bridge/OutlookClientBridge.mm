@@ -54,19 +54,9 @@ namespace
     return result;
   }
 
-  // #R015: Resolve Graph token from runtime environment for live fetches.
-  NSString *ResolveGraphToken()
+  // #R015: Resolve Graph token from shared cache or runtime environment for live fetches.
+  NSString *NormalizeGraphToken(NSString *token)
   {
-    NSString *token = @"";
-    const char *env_value = std::getenv("OUTLOOK_GRAPH_TOKEN");
-    if (env_value != nullptr)
-    {
-      token = [NSString stringWithUTF8String:env_value];
-      if (token == nil)
-      {
-        token = @"";
-      }
-    }
     NSCharacterSet *whitespace_set = [NSCharacterSet whitespaceAndNewlineCharacterSet];
     NSArray<NSString *> *token_parts = [token componentsSeparatedByCharactersInSet:whitespace_set];
     NSString *collapsed_token = [token_parts componentsJoinedByString:@""];
@@ -79,8 +69,107 @@ namespace
     {
       normalized_token = [normalized_token substringWithRange:NSMakeRange(1, normalized_token.length - 2)];
     }
-    token = normalized_token;
-    return token;
+    return normalized_token == nil ? @"" : normalized_token;
+  }
+
+  NSString *GraphTokenCachePath()
+  {
+    const char *home_value = std::getenv("HOME");
+    if (home_value == nullptr)
+    {
+      return @"";
+    }
+    return [NSString stringWithFormat:@"%s/.cache/mailcart/graph_oauth.json", home_value];
+  }
+
+  NSString *TokenFromCacheFile()
+  {
+    NSString *cache_path = GraphTokenCachePath();
+    if (cache_path.length == 0)
+    {
+      return @"";
+    }
+    NSData *cache_data = [NSData dataWithContentsOfFile:cache_path];
+    if (cache_data == nil)
+    {
+      return @"";
+    }
+    NSError *parse_error = nil;
+    id parsed_candidate = [NSJSONSerialization JSONObjectWithData:cache_data options:0 error:&parse_error];
+    if (parse_error != nil || ![parsed_candidate isKindOfClass:[NSDictionary class]])
+    {
+      return @"";
+    }
+    NSDictionary *cache = (NSDictionary *)parsed_candidate;
+    NSString *raw_access_token = @"";
+    id access_value = cache[@"access_token"];
+    if ([access_value isKindOfClass:[NSString class]])
+    {
+      raw_access_token = access_value;
+    }
+    NSString *access_token = NormalizeGraphToken(raw_access_token);
+    if (access_token.length == 0)
+    {
+      return @"";
+    }
+    id expires_value = cache[@"expires_at"];
+    if ([expires_value respondsToSelector:@selector(doubleValue)])
+    {
+      NSTimeInterval expires_at = [expires_value doubleValue];
+      NSTimeInterval now = [[NSDate date] timeIntervalSince1970];
+      if (expires_at > 0 && expires_at <= now + 300)
+      {
+        return @"";
+      }
+    }
+    return access_token;
+  }
+
+  BOOL AttemptRefreshGraphToken()
+  {
+    const char *repo_root = std::getenv("MAILCART_REPO_ROOT");
+    if (repo_root == nullptr)
+    {
+      return NO;
+    }
+    NSString *script_path = [NSString stringWithFormat:@"%s/scripts/refresh_graph_token.py", repo_root];
+    if (![[NSFileManager defaultManager] fileExistsAtPath:script_path])
+    {
+      return NO;
+    }
+
+    NSTask *task = [[NSTask alloc] init];
+    task.launchPath = @"/usr/bin/python3";
+    task.arguments = @[script_path, @"--force"];
+    task.environment = [NSProcessInfo processInfo].environment;
+    @try
+    {
+      [task launch];
+      [task waitUntilExit];
+      return task.terminationStatus == 0;
+    }
+    @catch (NSException *)
+    {
+      return NO;
+    }
+  }
+
+  NSString *ResolveGraphToken()
+  {
+    NSString *token = TokenFromCacheFile();
+    if (token.length == 0)
+    {
+      const char *env_value = std::getenv("OUTLOOK_GRAPH_TOKEN");
+      if (env_value != nullptr)
+      {
+        token = [NSString stringWithUTF8String:env_value];
+        if (token == nil)
+        {
+          token = @"";
+        }
+      }
+    }
+    return NormalizeGraphToken(token);
   }
 
   NSString *JsonStringOrEmpty(id value)
@@ -206,23 +295,27 @@ namespace
     }
     else
     {
-      NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
-      request.HTTPMethod = @"GET";
-      NSString *authorization_header = [NSString stringWithFormat:@"Bearer %@", token];
-      [request setValue:authorization_header forHTTPHeaderField:@"Authorization"];
-      [request setValue:(binary_accept ? @"application/octet-stream" : @"application/json") forHTTPHeaderField:@"Accept"];
+      NSString *attempt_token = token;
+      for (int attempt = 0; attempt < 2; ++attempt)
+      {
+        NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
+        request.HTTPMethod = @"GET";
+        NSString *authorization_header = [NSString stringWithFormat:@"Bearer %@", attempt_token];
+        [request setValue:authorization_header forHTTPHeaderField:@"Authorization"];
+        [request setValue:(binary_accept ? @"application/octet-stream" : @"application/json") forHTTPHeaderField:@"Accept"];
 
-      NSHTTPURLResponse *http_response = nil;
-      NSError *request_error = nil;
-      NSData *response_data = PerformRequestSynchronously(request, &http_response, &request_error);
-      NSInteger status_code = http_response.statusCode;
-      BOOL success = (request_error == nil && response_data != nil && status_code >= 200 && status_code < 300);
-      if (success)
-      {
-        response_payload = response_data;
-      }
-      else
-      {
+        NSHTTPURLResponse *http_response = nil;
+        NSError *request_error = nil;
+        NSData *response_data = PerformRequestSynchronously(request, &http_response, &request_error);
+        NSInteger status_code = http_response.statusCode;
+        BOOL success = (request_error == nil && response_data != nil && status_code >= 200 && status_code < 300);
+        if (success)
+        {
+          response_payload = response_data;
+          resolved_error = @"";
+          break;
+        }
+
         if (request_error != nil)
         {
           resolved_error = [NSString stringWithFormat:@"Graph request failed: %@ (%@, code %ld).",
@@ -236,14 +329,24 @@ namespace
           if (response_body.length > 0)
           {
             resolved_error = [NSString stringWithFormat:@"Graph returned HTTP %ld: %@",
-                                                        static_cast<long>(status_code),
-                                                        response_body];
+                                                            static_cast<long>(status_code),
+                                                            response_body];
           }
           else
           {
             resolved_error = [NSString stringWithFormat:@"Graph returned HTTP %ld.", static_cast<long>(status_code)];
           }
         }
+
+        if (status_code == 401 && attempt == 0 && AttemptRefreshGraphToken())
+        {
+          attempt_token = ResolveGraphToken();
+          if (attempt_token.length > 0)
+          {
+            continue;
+          }
+        }
+        break;
       }
     }
     if (error_text != nil)
@@ -272,34 +375,38 @@ namespace
     }
     else
     {
-      NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
-      request.HTTPMethod = headers.method;
-      NSString *authorization_header = [NSString stringWithFormat:@"Bearer %@", token];
-      [request setValue:authorization_header forHTTPHeaderField:@"Authorization"];
-      if (headers.accept.length > 0)
+      NSString *attempt_token = token;
+      for (int attempt = 0; attempt < 2; ++attempt)
       {
-        [request setValue:headers.accept forHTTPHeaderField:@"Accept"];
-      }
-      if (headers.content_type.length > 0)
-      {
-        [request setValue:headers.content_type forHTTPHeaderField:@"Content-Type"];
-      }
-      if (body_data != nil)
-      {
-        request.HTTPBody = body_data;
-      }
+        NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
+        request.HTTPMethod = headers.method;
+        NSString *authorization_header = [NSString stringWithFormat:@"Bearer %@", attempt_token];
+        [request setValue:authorization_header forHTTPHeaderField:@"Authorization"];
+        if (headers.accept.length > 0)
+        {
+          [request setValue:headers.accept forHTTPHeaderField:@"Accept"];
+        }
+        if (headers.content_type.length > 0)
+        {
+          [request setValue:headers.content_type forHTTPHeaderField:@"Content-Type"];
+        }
+        if (body_data != nil)
+        {
+          request.HTTPBody = body_data;
+        }
 
-      NSHTTPURLResponse *http_response = nil;
-      NSError *request_error = nil;
-      NSData *response_data = PerformRequestSynchronously(request, &http_response, &request_error);
-      NSInteger status_code = http_response.statusCode;
-      BOOL success = (request_error == nil && status_code >= 200 && status_code < 300);
-      if (success)
-      {
-        response_payload = response_data == nil ? [NSData data] : response_data;
-      }
-      else
-      {
+        NSHTTPURLResponse *http_response = nil;
+        NSError *request_error = nil;
+        NSData *response_data = PerformRequestSynchronously(request, &http_response, &request_error);
+        NSInteger status_code = http_response.statusCode;
+        BOOL success = (request_error == nil && status_code >= 200 && status_code < 300);
+        if (success)
+        {
+          response_payload = response_data == nil ? [NSData data] : response_data;
+          resolved_error = @"";
+          break;
+        }
+
         if (request_error != nil)
         {
           resolved_error = [NSString stringWithFormat:@"Graph request failed: %@ (%@, code %ld).",
@@ -313,14 +420,24 @@ namespace
           if (response_body.length > 0)
           {
             resolved_error = [NSString stringWithFormat:@"Graph returned HTTP %ld: %@",
-                                                        static_cast<long>(status_code),
-                                                        response_body];
+                                                            static_cast<long>(status_code),
+                                                            response_body];
           }
           else
           {
             resolved_error = [NSString stringWithFormat:@"Graph returned HTTP %ld.", static_cast<long>(status_code)];
           }
         }
+
+        if (status_code == 401 && attempt == 0 && AttemptRefreshGraphToken())
+        {
+          attempt_token = ResolveGraphToken();
+          if (attempt_token.length > 0)
+          {
+            continue;
+          }
+        }
+        break;
       }
     }
     if (error_text != nil)

@@ -23,10 +23,11 @@ Tests:
 - Provide a string value that yields null UTF-8 extraction and verify empty C++ string fallback.
 
 R015  Statement: Resolve live Graph payloads through runtime token-aware gateway behavior.
-Design: Bridge gateway resolves `OUTLOOK_GRAPH_TOKEN` from runtime environment; when present it requests Graph `/me/messages` payloads and supplies parser-ready JSON, and when absent it returns deterministic empty payloads.
+Design: Bridge gateway prefers a valid access token from the shared cache file, falls back to `OUTLOOK_GRAPH_TOKEN` from runtime environment, refreshes credentials on Graph HTTP 401 via `scripts/refresh_graph_token.py`, retries once, and when no token is available returns deterministic empty payloads.
 Tests:
 - Run with token unset and verify search/read produce deterministic empty-value responses.
 - Run with token set and verify Graph fetch payloads are handed to parser.
+- Mock Graph 401 and verify refresh script invocation and retry behavior.
 
 R020  Statement: Perform case-insensitive search matching over subject and preview fields.
 Design: Search gateway logic normalizes subject/preview/query text and includes entries when query is empty or found in either field.
@@ -76,3 +77,4 @@ Tests:
 - 2026-05-07: Updated bridge requirements for runtime Graph token flow and live message fetch behavior.
 - 2026-05-12: Added clang-tidy suppression guard requirement for intentional adjacent NSString bridge helper parameters.
 - 2026-05-13: Clarified sender/recipient mapping contract to Graph `emailAddress.address` payload fields.
+- 2026-05-19: Extended token resolution to shared cache file and 401 refresh retry behavior.

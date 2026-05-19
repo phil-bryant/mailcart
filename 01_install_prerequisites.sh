@@ -9,8 +9,8 @@ PARENT_DIR="$(dirname "$SCRIPT_DIR")"
 ONEPSA_REPO_URL="${ONEPSA_REPO_URL:-https://github.com/phil-bryant/1psa.git}"
 ONEPSA_DIR="${ONEPSA_DIR:-${PARENT_DIR}/1psa}"
 ONEPSA_LOCAL_BIN="${ONEPSA_DIR}/bin/1psa"
-OUTLOOK_GRAPH_TOKEN_PSA_ITEM="${OUTLOOK_GRAPH_TOKEN_PSA_ITEM:-outlook_graph_token}"
-OUTLOOK_GRAPH_TOKEN_PSA_FIELD="${OUTLOOK_GRAPH_TOKEN_PSA_FIELD:-password}"
+OUTLOOK_GRAPH_TOKEN_PSA_ITEM="${OUTLOOK_GRAPH_TOKEN_PSA_ITEM:-OUTLOOK_GRAPH_API}"
+OUTLOOK_GRAPH_TOKEN_PSA_FIELD="${OUTLOOK_GRAPH_TOKEN_PSA_FIELD:-token}"
 
 print_header() {
     echo "============================================================"

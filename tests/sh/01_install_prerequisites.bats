@@ -246,8 +246,8 @@ EOF
   [[ "${output}" == *"make test"* ]]
   [[ "${output}" == *"make ui-test"* ]]
   [[ "${output}" == *"make run"* ]]
-  [[ "${output}" == *"item: outlook_graph_token"* ]]
-  [[ "${output}" == *"field: password"* ]]
+  [[ "${output}" == *"item: OUTLOOK_GRAPH_API"* ]]
+  [[ "${output}" == *"field: token"* ]]
   run rg "^install xcodegen$" "${TMP_ROOT}/brew.log"
   [ "$status" -eq 0 ]
   run rg "^install shellcheck$" "${TMP_ROOT}/brew.log"

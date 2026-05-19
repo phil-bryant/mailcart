@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
 """Minimal Mailcart API for Matchy search/move operations."""
 
+# Traceability anchors for requirements whose implementation is delegated to scripts/graph_token.py:
+# #R005: Bearer-prefix normalization (graph_token._normalize_token)
+# #R026: Graph refresh-token exchange (graph_token.GraphTokenManager.refresh)
+# #R028: OAuth session cache persistence (graph_token.GraphTokenManager.persist)
+
 from __future__ import annotations
 
 import os
-import shutil
 import socket
-import subprocess  # nosec B404
+import sys
+from pathlib import Path
 from typing import Any
 
 import requests
@@ -14,57 +19,35 @@ import uvicorn
 from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel, Field
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from graph_token import GraphTokenError, get_manager  # noqa: E402
+
 
 GRAPH_BASE = "https://graph.microsoft.com/v1.0"
-DEFAULT_PSA_ITEM = "outlook_graph_token"
-DEFAULT_PSA_FIELD = "password"
+_TOKEN_MANAGER = get_manager()
 
 
-#R005: Normalize optional Bearer token prefix before Graph usage.
-def _graph_token() -> str:
-    token = os.environ.get("OUTLOOK_GRAPH_TOKEN", "").strip()
-    if not token:
-        token = _token_from_1psa()
-    if token.startswith("Bearer "):
-        token = token[7:].strip()
-    return token
-
-
-def _token_from_1psa() -> str:
-    item = os.environ.get("OUTLOOK_GRAPH_TOKEN_PSA_ITEM", DEFAULT_PSA_ITEM).strip()
-    # Default "password" is the standard 1Password field name, not an embedded credential.
-    field = os.environ.get("OUTLOOK_GRAPH_TOKEN_PSA_FIELD", DEFAULT_PSA_FIELD).strip()
-    if not item:
-        raise HTTPException(status_code=500, detail="OUTLOOK_GRAPH_TOKEN_PSA_ITEM cannot be empty")
-    if not field:
-        raise HTTPException(status_code=500, detail="OUTLOOK_GRAPH_TOKEN_PSA_FIELD cannot be empty")
-    psa_path = shutil.which("1psa")
-    if not psa_path:
-        raise HTTPException(status_code=500, detail="1psa is required to resolve OUTLOOK_GRAPH_TOKEN")
-    try:
-        # Arguments are explicit, shell is disabled, and executable path is resolved via shutil.which.
-        completed = subprocess.run(
-            [psa_path, "-f", item, field],
-            check=True,
-            capture_output=True,
-            text=True,
-            shell=False,  # nosec B603
-        )
-        return completed.stdout.strip()
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=500, detail="1psa is required to resolve OUTLOOK_GRAPH_TOKEN") from exc
-    except subprocess.CalledProcessError as exc:
-        detail = exc.stderr.strip() if exc.stderr else "unknown 1psa error"
-        raise HTTPException(status_code=500, detail=f"Unable to resolve OUTLOOK_GRAPH_TOKEN via 1psa: {detail}") from exc
+def _is_auth_failure(status_code: int, body: str) -> bool:
+    if status_code == 401:
+        return True
+    lowered = body.lower()
+    return (
+        "invalidauthenticationtoken" in lowered
+        or "authorization_identity_not_found" in lowered
+        or "graph auth failed" in lowered
+        or ": 401 " in lowered
+    )
 
 
 #R001: Require an Outlook Graph token for API-backed operations.
 #R010: Build Graph request headers with auth and JSON content negotiation.
 #R015: Fail request processing with explicit error when token is missing.
 def _headers() -> dict[str, str]:
-    token = _graph_token()
-    if not token:
-        raise HTTPException(status_code=500, detail="OUTLOOK_GRAPH_TOKEN is required")
+    try:
+        token = _TOKEN_MANAGER.get_access_token()
+    except GraphTokenError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
     return {
         "Authorization": f"Bearer {token}",
         "Accept": "application/json",
@@ -72,20 +55,36 @@ def _headers() -> dict[str, str]:
     }
 
 
+#R027: Retry the Graph request once after a 401 by invalidating + force-refreshing the cached token before re-issuing.
+def _graph_request(method: str, path: str, *, params: dict[str, Any] | None = None, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+    url = f"{GRAPH_BASE}{path}"
+    for attempt in range(2):
+        headers = _headers()
+        response = requests.request(method, url, params=params or {}, json=payload, headers=headers, timeout=25)
+        if response.status_code < 400:
+            if not response.text:
+                return {}
+            return response.json()
+        if attempt == 0 and response.status_code == 401:
+            _TOKEN_MANAGER.invalidate()
+            try:
+                _TOKEN_MANAGER.refresh(force=True)
+            except GraphTokenError as exc:
+                raise HTTPException(status_code=502, detail=f"Graph auth failed and token refresh failed: {exc}") from exc
+            continue
+        detail = f"Graph {method} failed: {response.status_code} {response.text[:200]}"
+        if _is_auth_failure(response.status_code, response.text):
+            raise HTTPException(status_code=502, detail=f"Graph auth failed: {response.status_code} {response.text[:200]}")
+        raise HTTPException(status_code=502, detail=detail)
+    raise HTTPException(status_code=502, detail="Graph request failed after token refresh retry")
+
+
 def _graph_get(path: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
-    response = requests.get(f"{GRAPH_BASE}{path}", params=params or {}, headers=_headers(), timeout=25)
-    if response.status_code >= 400:
-        raise HTTPException(status_code=502, detail=f"Graph GET failed: {response.status_code} {response.text[:200]}")
-    return response.json()
+    return _graph_request("GET", path, params=params)
 
 
 def _graph_post(path: str, payload: dict[str, Any]) -> dict[str, Any]:
-    response = requests.post(f"{GRAPH_BASE}{path}", json=payload, headers=_headers(), timeout=25)
-    if response.status_code >= 400:
-        raise HTTPException(status_code=502, detail=f"Graph POST failed: {response.status_code} {response.text[:200]}")
-    if not response.text:
-        return {}
-    return response.json()
+    return _graph_request("POST", path, payload=payload)
 
 
 #R025: Resolve destination mail folder by name, creating it when absent.
@@ -109,8 +108,11 @@ app = FastAPI(title="mailcart-matchy-api")
 
 
 @app.get("/health")
+#R029: Expose Graph token health metadata (`token_status`, `token_expires_at`) from the API health endpoint.
 def health() -> dict[str, str]:
-    return {"status": "ok"}
+    status = {"status": "ok"}
+    status.update(_TOKEN_MANAGER.token_status())
+    return status
 
 
 @app.get("/v1/messages/search")
@@ -118,23 +120,35 @@ def health() -> dict[str, str]:
 def search_messages(query: str = Query(default="", max_length=160), limit: int = Query(default=50, ge=1, le=100)) -> dict[str, Any]:
     payload: dict[str, Any] = {"value": []}
     normalized_query = query.strip()
+    search_error: HTTPException | None = None
     if normalized_query:
         try:
             payload = _graph_get(
                 "/me/messages",
                 params={"$select": "id,subject,bodyPreview,receivedDateTime,from", "$search": f"\"{normalized_query}\"", "$top": str(limit)},
             )
-        except HTTPException:
+        except HTTPException as exc:
+            if exc.status_code == 502 and isinstance(exc.detail, str) and _is_auth_failure(401, exc.detail):
+                raise
+            search_error = exc
             payload = {"value": []}
+    #R030: Surface Graph auth failures explicitly instead of swallowing them as empty `{"messages": []}` results.
     if not payload.get("value"):
-        payload = _graph_get(
-            "/me/messages",
-            params={
-                "$select": "id,subject,bodyPreview,receivedDateTime,from",
-                "$orderby": "receivedDateTime DESC",
-                "$top": str(max(limit * 8, 200) if normalized_query else max(limit, 50)),
-            },
-        )
+        try:
+            payload = _graph_get(
+                "/me/messages",
+                params={
+                    "$select": "id,subject,bodyPreview,receivedDateTime,from",
+                    "$orderby": "receivedDateTime DESC",
+                    "$top": str(max(limit * 8, 200) if normalized_query else max(limit, 50)),
+                },
+            )
+        except HTTPException as exc:
+            if exc.status_code == 502 and isinstance(exc.detail, str) and _is_auth_failure(401, exc.detail):
+                raise
+            if search_error is not None:
+                raise search_error
+            raise
     normalized_query_lc = normalized_query.lower()
     messages = []
     for row in payload.get("value", []):
@@ -160,6 +174,41 @@ def search_messages(query: str = Query(default="", max_length=160), limit: int =
     return {"messages": messages}
 
 
+@app.get("/v1/messages/{message_id}")
+#R035: Return a single message with subject, sender, recipients, body, and preview metadata for downstream UIs.
+def get_message(message_id: str) -> dict[str, Any]:
+    if not message_id.strip():
+        raise HTTPException(status_code=400, detail="message_id is required")
+    payload = _graph_get(
+        f"/me/messages/{message_id}",
+        params={"$select": "id,subject,bodyPreview,body,from,toRecipients,receivedDateTime"},
+    )
+    sender = str((((payload.get("from") or {}).get("emailAddress") or {}).get("address")) or "")
+    recipients_raw = payload.get("toRecipients") or []
+    recipients = [
+        str(((row or {}).get("emailAddress") or {}).get("address") or "")
+        for row in recipients_raw
+        if isinstance(row, dict)
+    ]
+    recipients = [value for value in recipients if value]
+    body_obj = payload.get("body") or {}
+    body_content_type = str(body_obj.get("contentType", "")).lower()
+    body_content = str(body_obj.get("content", ""))
+    html_body = body_content if body_content_type == "html" else ""
+    text_body = body_content if body_content_type == "text" else ""
+    return {
+        "message_id": str(payload.get("id", message_id)),
+        "subject": str(payload.get("subject", "")),
+        "preview": str(payload.get("bodyPreview", "")),
+        "received_at": str(payload.get("receivedDateTime", "")),
+        "sender": sender,
+        "recipients": ",".join(recipients),
+        "html_body": html_body,
+        "text_body": text_body,
+        "body_text": text_body or html_body,
+    }
+
+
 @app.post("/v1/messages/{message_id}/move")
 #R025: Move selected message into requested destination folder.
 def move_message(message_id: str, request: MoveRequest) -> dict[str, Any]:
@@ -169,6 +218,12 @@ def move_message(message_id: str, request: MoveRequest) -> dict[str, Any]:
 
 
 if __name__ == "__main__":
+    if os.environ.get("OUTLOOK_GRAPH_CLIENT_ID", "").strip():
+        try:
+            _TOKEN_MANAGER.get_access_token()
+        except GraphTokenError as exc:
+            print(str(exc), file=sys.stderr)
+            raise SystemExit(1) from exc
     in_use = False
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.settimeout(0.25)
