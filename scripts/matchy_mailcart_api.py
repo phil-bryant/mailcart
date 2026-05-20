@@ -75,6 +75,11 @@ def _graph_request(method: str, path: str, *, params: dict[str, Any] | None = No
         detail = f"Graph {method} failed: {response.status_code} {response.text[:200]}"
         if _is_auth_failure(response.status_code, response.text):
             raise HTTPException(status_code=502, detail=f"Graph auth failed: {response.status_code} {response.text[:200]}")
+        # #R040: Pass through Graph's 404 (and ItemNotFound errors) as a real 404 so downstream
+        # #R040: callers can render "no longer in inbox" instead of a generic 502. Graph also
+        # #R040: occasionally serves ResourceNotFound as 400 with that text in the body.
+        if response.status_code == 404 or "itemnotfound" in response.text.lower() or "resourcenotfound" in response.text.lower():
+            raise HTTPException(status_code=404, detail=f"Graph reports message not found: {response.text[:200]}")
         raise HTTPException(status_code=502, detail=detail)
     raise HTTPException(status_code=502, detail="Graph request failed after token refresh retry")
 
