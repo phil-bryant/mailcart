@@ -17,7 +17,11 @@ from typing import Any
 import requests
 
 
-TOKEN_ENDPOINT = "https://login.microsoftonline.com/common/oauth2/v2.0/token"
+TOKEN_ENDPOINT = "https://login.microsoftonline.com/common/oauth2/v2.0/token"  # nosec B105
+_STATUS_MISSING_REFRESH_TOKEN = "missing_refresh_token"  # nosec B105
+_STATUS_MISSING = "missing"
+_STATUS_VALID = "valid"
+_STATUS_EXPIRED = "expired"
 DEFAULT_CACHE_PATH = Path.home() / ".cache" / "mailcart" / "graph_oauth.json"
 DEFAULT_PSA_ITEM = "OUTLOOK_GRAPH_API"
 DEFAULT_PSA_FIELD = "token"
@@ -121,13 +125,13 @@ class GraphTokenManager:
         except GraphTokenError as exc:
             message = str(exc)
             if "refresh" in message.lower():
-                return {"token_status": "missing_refresh_token", "token_error": message}
-            return {"token_status": "missing", "token_error": message}
+                return {"token_status": _STATUS_MISSING_REFRESH_TOKEN, "token_error": message}
+            return {"token_status": _STATUS_MISSING, "token_error": message}
         if session.is_valid():
-            return {"token_status": "valid", "token_expires_at": str(session.expires_at)}
+            return {"token_status": _STATUS_VALID, "token_expires_at": str(session.expires_at)}
         if session.refresh_token:
-            return {"token_status": "expired", "token_expires_at": str(session.expires_at)}
-        return {"token_status": "missing_refresh_token"}
+            return {"token_status": _STATUS_EXPIRED, "token_expires_at": str(session.expires_at)}
+        return {"token_status": _STATUS_MISSING_REFRESH_TOKEN}
 
     def load(self) -> TokenSession:
         if self._session is not None and self._session.is_valid():
@@ -249,7 +253,7 @@ class GraphTokenManager:
     def _bootstrap_session(self, cached: TokenSession | None) -> TokenSession:
         env_token = _normalize_token(os.environ.get("OUTLOOK_GRAPH_TOKEN", ""))
         access_token = env_token
-        refresh_token = ""
+        refresh_token = ""  # nosec B105
         client_id = self._client_id()
         expires_at = 0
 
