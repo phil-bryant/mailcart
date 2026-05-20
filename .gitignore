@@ -17,6 +17,8 @@ default.profraw
 .venv/
 #R025: Exclude named project virtual environment directories.
 *-venv/
+#R040: Exclude Python bytecode cache directories.
+__pycache__/
 #R005: Exclude Xcode DerivedData and user-specific metadata.
 DerivedData/
 *.xcuserdatad/
