@@ -11,6 +11,7 @@ from __future__ import annotations
 import os
 import socket
 import sys
+from urllib.parse import quote, unquote
 from pathlib import Path
 from typing import Any
 
@@ -65,7 +66,7 @@ def _graph_request(method: str, path: str, *, params: dict[str, Any] | None = No
             if not response.text:
                 return {}
             return response.json()
-        if attempt == 0 and response.status_code == 401:
+        if attempt == 0 and _is_auth_failure(response.status_code, response.text):
             _TOKEN_MANAGER.invalidate()
             try:
                 _TOKEN_MANAGER.refresh(force=True)
@@ -75,9 +76,9 @@ def _graph_request(method: str, path: str, *, params: dict[str, Any] | None = No
         detail = f"Graph {method} failed: {response.status_code} {response.text[:200]}"
         if _is_auth_failure(response.status_code, response.text):
             raise HTTPException(status_code=502, detail=f"Graph auth failed: {response.status_code} {response.text[:200]}")
-        # #R040: Pass through Graph's 404 (and ItemNotFound errors) as a real 404 so downstream
-        # #R040: callers can render "no longer in inbox" instead of a generic 502. Graph also
-        # #R040: occasionally serves ResourceNotFound as 400 with that text in the body.
+        # Pass through Graph's 404 (and ItemNotFound errors) as a real 404 so downstream
+        # callers can render "no longer in inbox" instead of a generic 502. Graph also
+        # occasionally serves ResourceNotFound as 400 with that text in the body.
         if response.status_code == 404 or "itemnotfound" in response.text.lower() or "resourcenotfound" in response.text.lower():
             raise HTTPException(status_code=404, detail=f"Graph reports message not found: {response.text[:200]}")
         raise HTTPException(status_code=502, detail=detail)
@@ -90,6 +91,12 @@ def _graph_get(path: str, params: dict[str, Any] | None = None) -> dict[str, Any
 
 def _graph_post(path: str, payload: dict[str, Any]) -> dict[str, Any]:
     return _graph_request("POST", path, payload=payload)
+
+
+def _graph_message_path(message_id: str) -> str:
+    # Normalize possibly pre-encoded IDs, then quote as a single path segment.
+    normalized_id = unquote(message_id)
+    return f"/me/messages/{quote(normalized_id, safe='')}"
 
 
 #R025: Resolve destination mail folder by name, creating it when absent.
@@ -185,7 +192,7 @@ def get_message(message_id: str) -> dict[str, Any]:
     if not message_id.strip():
         raise HTTPException(status_code=400, detail="message_id is required")
     payload = _graph_get(
-        f"/me/messages/{message_id}",
+        _graph_message_path(message_id),
         params={"$select": "id,subject,bodyPreview,body,from,toRecipients,receivedDateTime"},
     )
     sender = str((((payload.get("from") or {}).get("emailAddress") or {}).get("address")) or "")
@@ -218,7 +225,7 @@ def get_message(message_id: str) -> dict[str, Any]:
 #R025: Move selected message into requested destination folder.
 def move_message(message_id: str, request: MoveRequest) -> dict[str, Any]:
     folder_id = _get_or_create_folder_id(request.folder_name)
-    response = _graph_post(f"/me/messages/{message_id}/move", {"destinationId": folder_id})
+    response = _graph_post(f"{_graph_message_path(message_id)}/move", {"destinationId": folder_id})
     return {"moved": True, "folder_id": folder_id, "result_id": response.get("id", "")}
 
 

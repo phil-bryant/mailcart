@@ -1,13 +1,19 @@
 #!/usr/bin/env bats
 
 @test "Traceability tags for gitignore requirements" {
-  #R001 #R005 #R010 #R015 #R020 #R025 #R030 #R035 #R040
+  #R001 #R005 #R010 #R015 #R020 #R025 #R030 #R035 #R040 #R045
   [ 1 -eq 1 ]
 }
 
 @test "R040: .gitignore excludes Python bytecode cache directories" {
   #R040
   run rg '^__pycache__/$' "/Users/phil/local/src/mailcart/.gitignore"
+  [ "$status" -eq 0 ]
+}
+
+@test "R045: .gitignore excludes standalone Python bytecode files" {
+  #R045
+  run rg '^\*\.pyc$' "/Users/phil/local/src/mailcart/.gitignore"
   [ "$status" -eq 0 ]
 }
 

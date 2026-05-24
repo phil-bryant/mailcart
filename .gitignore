@@ -19,6 +19,8 @@ default.profraw
 *-venv/
 #R040: Exclude Python bytecode cache directories.
 __pycache__/
+#R045: Exclude standalone Python bytecode artifacts.
+*.pyc
 #R005: Exclude Xcode DerivedData and user-specific metadata.
 DerivedData/
 *.xcuserdatad/
