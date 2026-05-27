@@ -145,9 +145,9 @@ Tests:
 - Run `make ui-test` without the flag and verify no skip message is printed.
 
 R095  Statement: Expose a Matchy API lane through Makefile script entrypoints.
-Design: `make run-api` optionally warms the shared token cache when `OUTLOOK_GRAPH_CLIENT_ID` is set, exports `MAILCART_REPO_ROOT`, and runs `python3 scripts/matchy_mailcart_api.py`.
+Design: `make run-api` optionally warms the shared token cache when `OUTLOOK_GRAPH_CLIENT_ID` is set, provisions HTTPS cert/key materials via `./05_install_matchy_api_tls.sh`, exports `MAILCART_REPO_ROOT` plus `MAILCART_MATCHY_TLS_*` path variables, and runs `python3 scripts/matchy_mailcart_api.py`.
 Tests:
-- Run `make run-api` with stubbed `python3` and verify `scripts/matchy_mailcart_api.py` is invoked.
+- Run `make run-api` with stubbed `bash` and `python3` and verify `./05_install_matchy_api_tls.sh` executes before `scripts/matchy_mailcart_api.py`.
 
 R100  Statement: Expose stable alias entrypoints for script-backed crash and Matchy lanes.
 Design: `make verify-macos-crash-reporter` aliases to `crash-reporter-smoke` and `make crash` aliases to `crash-reporter-smoke`; `make run-api` is the canonical Matchy API entrypoint.
@@ -194,3 +194,4 @@ Tests:
 - 2026-05-13: Moved shell BATS ownership to `make test` and switched `make ui-test` to inline non-BATS UI regression checks plus smoke.
 - 2026-05-13: Replaced ad-hoc runtime automation lane with Teller-style XCUITest `xcodebuild test` lane in `make ui-test`.
 - 2026-05-13: Extended `make clean` requirements to remove `default.profraw` profiling artifacts.
+- 2026-05-27: Updated `make run-api` requirements to include TLS bootstrap orchestration and HTTPS environment propagation.

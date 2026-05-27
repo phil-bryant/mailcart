@@ -9,7 +9,8 @@ rules:
         - tests/
         - requirements/
         - .build/
-        - macos_app/OutlookMailApp.xcodeproj/
+        - .cursor/
+        - "**/macos_app/OutlookMailApp.xcodeproj/"
     pattern-regex: '(?i)(OUTLOOK_GRAPH_TOKEN|Authorization:\s*Bearer)\s*[:=]\s*["''][A-Za-z0-9._\-]{24,}["'']'
 
   - id: no-production-http-endpoint
@@ -22,8 +23,9 @@ rules:
         - tests/
         - requirements/
         - .build/
+        - .cursor/
         - .semgrep.yml
         - "*.plist"
     patterns:
-      - pattern-regex: '(?i)http://(?!localhost|127\.0\.0\.1)[A-Za-z0-9._:-]+'
+      - pattern-regex: '(?i)http://[A-Za-z0-9._:-]+'
       - pattern-not-regex: '(?i)http://www\.apple\.com/DTDs/'

@@ -17,6 +17,9 @@ APP_EXECUTABLE := $(APP_BUNDLE)/Contents/MacOS/$(APP_NAME)
 OUTLOOK_GRAPH_TOKEN_PSA_ITEM ?= OUTLOOK_GRAPH_API
 OUTLOOK_GRAPH_TOKEN_PSA_FIELD ?= token
 MAILCART_REPO_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
+MAILCART_MATCHY_TLS_DIR ?= $(HOME)/.mailcart
+MAILCART_MATCHY_TLS_CERT_FILE ?= $(MAILCART_MATCHY_TLS_DIR)/matchy-localhost-cert.pem
+MAILCART_MATCHY_TLS_KEY_FILE ?= $(MAILCART_MATCHY_TLS_DIR)/matchy-localhost-key.pem
 
 .DEFAULT_GOAL := help
 
@@ -201,7 +204,8 @@ run-api:
 	@if [ -n "$$OUTLOOK_GRAPH_CLIENT_ID" ]; then \
 		MAILCART_REPO_ROOT="$(MAILCART_REPO_ROOT)" OUTLOOK_GRAPH_CLIENT_ID="$$OUTLOOK_GRAPH_CLIENT_ID" python3 "$(MAILCART_REPO_ROOT)/scripts/refresh_graph_token.py" || true; \
 	fi; \
-	MAILCART_REPO_ROOT="$(MAILCART_REPO_ROOT)" OUTLOOK_GRAPH_CLIENT_ID="$$OUTLOOK_GRAPH_CLIENT_ID" python3 "$(MAILCART_REPO_ROOT)/scripts/matchy_mailcart_api.py"
+	MAILCART_MATCHY_TLS_DIR="$(MAILCART_MATCHY_TLS_DIR)" MAILCART_MATCHY_TLS_CERT_FILE="$(MAILCART_MATCHY_TLS_CERT_FILE)" MAILCART_MATCHY_TLS_KEY_FILE="$(MAILCART_MATCHY_TLS_KEY_FILE)" bash "$(MAILCART_REPO_ROOT)/05_install_matchy_api_tls.sh"; \
+	MAILCART_REPO_ROOT="$(MAILCART_REPO_ROOT)" OUTLOOK_GRAPH_CLIENT_ID="$$OUTLOOK_GRAPH_CLIENT_ID" MAILCART_MATCHY_TLS_DIR="$(MAILCART_MATCHY_TLS_DIR)" MAILCART_MATCHY_TLS_CERT_FILE="$(MAILCART_MATCHY_TLS_CERT_FILE)" MAILCART_MATCHY_TLS_KEY_FILE="$(MAILCART_MATCHY_TLS_KEY_FILE)" python3 "$(MAILCART_REPO_ROOT)/scripts/matchy_mailcart_api.py"
 
 #R100: Expose stable entrypoints for crash and Matchy script lanes.
 verify-macos-crash-reporter: crash-reporter-smoke
@@ -504,21 +508,22 @@ _sast_clang_tidy:
 	CLANG_TIDY_LOG="$(SAST_REPORT_DIR)/clang-tidy-blocking.log"; \
 	: > "$$CLANG_TIDY_LOG"; \
 	CLANG_TIDY_COMMON_FLAGS="--config-file=.clang-tidy"; \
+	MACOS_SDK_PATH="$$(xcrun --sdk macosx --show-sdk-path)"; \
 	"$$CLANG_TIDY_BIN" \
 		$$CLANG_TIDY_COMMON_FLAGS \
 		"cpp_core/src/mailcart.cpp" \
 		"cpp_core/src/mime_content.cpp" \
 		"cpp_core/src/outlook_mailcart.cpp" \
 		"cpp_core/src/outlook_client.cpp" \
-		-- -std=c++17 -I"cpp_core/include" 2>&1 | tee -a "$$CLANG_TIDY_LOG"; \
+		-- -std=c++17 -isysroot "$$MACOS_SDK_PATH" -stdlib=libc++ -I"cpp_core/include" 2>&1 | tee -a "$$CLANG_TIDY_LOG"; \
 	xcrun --sdk macosx "$$CLANG_TIDY_BIN" \
 		$$CLANG_TIDY_COMMON_FLAGS \
 		"macos_app/Bridge/OutlookClientBridge.mm" \
-		-- -std=c++17 -fobjc-arc -x objective-c++ -I"cpp_core/include" -I"macos_app/Bridge" 2>&1 | tee -a "$$CLANG_TIDY_LOG"; \
+		-- -std=c++17 -isysroot "$$MACOS_SDK_PATH" -fobjc-arc -x objective-c++ -I"cpp_core/include" -I"macos_app/Bridge" 2>&1 | tee -a "$$CLANG_TIDY_LOG"; \
 	xcrun --sdk macosx "$$CLANG_TIDY_BIN" \
 		$$CLANG_TIDY_COMMON_FLAGS \
 		"macos_app/Bridge/OutlookBridgeModels.m" \
-		-- -fobjc-arc -x objective-c -I"macos_app/Bridge" 2>&1 | tee -a "$$CLANG_TIDY_LOG"; \
+		-- -isysroot "$$MACOS_SDK_PATH" -fobjc-arc -x objective-c -I"macos_app/Bridge" 2>&1 | tee -a "$$CLANG_TIDY_LOG"; \
 	if python3 -c 'import pathlib,re,sys; text=pathlib.Path(sys.argv[1]).read_text(encoding="utf-8", errors="replace"); pattern=re.compile(r"error: .*\[[^\]]*-warnings-as-errors[^\]]*\]"); raise SystemExit(0 if pattern.search(text) else 1)' "$$CLANG_TIDY_LOG"; then \
 		echo "clang-tidy blocking findings detected. See $$CLANG_TIDY_LOG."; \
 		exit 1; \

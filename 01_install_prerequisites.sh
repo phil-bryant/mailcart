@@ -177,6 +177,11 @@ ensure_sast_tooling() {
     ensure_brew_formula "gitleaks"
 }
 
+ensure_tls_tooling() {
+    echo ""
+    ensure_brew_formula "mkcert"
+}
+
 ensure_semgrep_freshness() {
     #R075: Ensure rerunning installer upgrades semgrep when outdated.
     #R060: Emit explicit semgrep status for check/install/upgrade phases.
@@ -330,6 +335,7 @@ print_final_guidance() {
     echo "- make test"
     echo "- make ui-test"
     echo "- make run"
+    echo "- ./05_install_matchy_api_tls.sh"
     echo ""
     echo "1psa defaults for real Outlook token:"
     echo "- item: ${OUTLOOK_GRAPH_TOKEN_PSA_ITEM}"
@@ -343,6 +349,7 @@ ensure_xcode_toolchain
 ensure_xcode_first_launch
 ensure_swift_tooling
 ensure_brew_formula "xcodegen"
+ensure_tls_tooling
 ensure_sast_tooling
 ensure_1psa
 print_final_guidance

@@ -23,7 +23,7 @@ This project can run against live Outlook mail when `make run` can resolve a val
 5. Save the **Application (client) ID** as `CLIENT_ID`.
 6. Open **Authentication**:
    - Click **Add a platform** -> **Mobile and desktop applications**
-   - Add redirect URI: `http://localhost`
+   - Add redirect URI: `https://localhost`
    - Save
 7. Open **API permissions**:
    - Click **Add a permission** -> **Microsoft Graph** -> **Delegated permissions**
@@ -189,7 +189,10 @@ If CI is added later, use the same sequence to keep local and CI checks aligned.
   - Re-check Graph permission consent for `Mail.Read` and `Mail.ReadWrite`.
 - `401`/`403` behavior in Graph calls
   - Token expired or missing scope; verify `refresh_token` is stored in 1Password and `OUTLOOK_GRAPH_CLIENT_ID` is exported, then run `python3 scripts/refresh_graph_token.py`.
-  - Restart `make run-api` if the API process on port 8788 was started before refresh credentials were configured.
+  - Restart `make run-api` if the HTTPS API process on port 8788 was started before refresh credentials were configured.
+- TLS startup failures for `make run-api`
+  - Run `./05_install_matchy_api_tls.sh` to generate local cert/key material.
+  - Verify `MAILCART_MATCHY_TLS_CERT_FILE` and `MAILCART_MATCHY_TLS_KEY_FILE` point to existing files.
 - `1psa` not found
   - Re-run `./01_install_prerequisites.sh`.
 
@@ -197,8 +200,10 @@ If CI is added later, use the same sequence to keep local and CI checks aligned.
 
 To provide Matchy-compatible endpoints for search and move:
 
+- Install local API TLS materials first: `./05_install_matchy_api_tls.sh`
 - Run `python3 scripts/matchy_mailcart_api.py`
 - Or run `make run-api`
+- API transport is HTTPS-only on `https://127.0.0.1:8788`
 - Endpoints:
   - `GET /v1/messages/search?query=...&limit=...`
   - `POST /v1/messages/{message_id}/move` with `{ "folder_name": "matchy" }`
@@ -208,7 +213,7 @@ To provide Matchy-compatible endpoints for search and move:
 ┌───────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │                                            SYSTEM LANDSCAPE                                           │
 │                                                                                                       │
-│  ┌────────────────────────────────┐      HTTP (search/move)       ┌────────────────────────────────┐  │
+│  ┌────────────────────────────────┐      HTTPS (search/move)      ┌────────────────────────────────┐  │
 │  │             MATCHY             │ ────────────────────────────► │            MAILCART            │  │
 │  │                                │ ◄──────────────────────────── │                                │  │
 │  │ - FastAPI service              │        message candidates     │ - Outlook/Graph integration    │  │

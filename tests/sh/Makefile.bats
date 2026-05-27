@@ -3,6 +3,7 @@
 setup() {
   export REPO_ROOT="/Users/phil/local/src/mailcart"
   export MAKEFILE_PATH="${REPO_ROOT}/Makefile"
+  export TLS_INSTALLER_PATH="${REPO_ROOT}/05_install_matchy_api_tls.sh"
   export SWIFTLINT_CONFIG_PATH="${REPO_ROOT}/.swiftlint.yml"
   export TMP_ROOT
   TMP_ROOT="$(mktemp -d)"
@@ -11,7 +12,9 @@ setup() {
   export TEST_LOG="${TMP_ROOT}/commands.log"
   mkdir -p "${SANDBOX}" "${STUB_BIN}"
   cp "${MAKEFILE_PATH}" "${SANDBOX}/Makefile"
+  cp "${TLS_INSTALLER_PATH}" "${SANDBOX}/05_install_matchy_api_tls.sh"
   cp "${SWIFTLINT_CONFIG_PATH}" "${SANDBOX}/.swiftlint.yml"
+  chmod +x "${SANDBOX}/05_install_matchy_api_tls.sh"
   : > "${TEST_LOG}"
 }
 
@@ -370,6 +373,15 @@ printf "python3 %s\n" "$*" >> "${TEST_LOG}"
 exit 0
 EOF
   chmod +x "${STUB_BIN}/python3"
+}
+
+create_bash_stub() {
+  cat > "${STUB_BIN}/bash" <<'EOF'
+#!/bin/bash
+printf "bash %s\n" "$*" >> "${TEST_LOG}"
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/bash"
 }
 
 @test "R001: help target documents consolidated workflow targets" {
@@ -739,6 +751,7 @@ EOF
   local app_bundle="${SANDBOX}/app/Mailcart.app"
   local app_executable="${app_bundle}/Contents/MacOS/Mailcart"
   create_python3_stub
+  create_bash_stub
   create_1psa_stub
   create_clang_tidy_stub
   create_swiftlint_stub
@@ -762,9 +775,13 @@ EOF
 
   run_make run-api
   [ "$status" -eq 0 ]
+  run rg "^bash .+/05_install_matchy_api_tls\.sh$" "${TEST_LOG}" --count
+  [ "$status" -eq 0 ]
+  [ "${output}" = "1" ]
   run rg "^python3 .+/scripts/matchy_mailcart_api\.py$" "${TEST_LOG}" --count
   [ "$status" -eq 0 ]
   [ "${output}" = "1" ]
+  rm -f "${STUB_BIN}/bash"
 
   run_make verify-macos-crash-reporter APP_BUNDLE="${app_bundle}" APP_EXECUTABLE="${app_executable}"
   [ "$status" -eq 0 ]

@@ -27,6 +27,14 @@ from graph_token import GraphTokenError, get_manager  # noqa: E402
 
 GRAPH_BASE = "https://graph.microsoft.com/v1.0"
 _TOKEN_MANAGER = get_manager()
+API_HOST = "127.0.0.1"
+API_PORT = 8788
+API_HTTPS_BASE = f"https://{API_HOST}:{API_PORT}"
+TLS_DIR_DEFAULT = Path.home() / ".mailcart"
+TLS_CERT_ENV = "MAILCART_MATCHY_TLS_CERT_FILE"
+TLS_KEY_ENV = "MAILCART_MATCHY_TLS_KEY_FILE"
+TLS_CERT_DEFAULT = TLS_DIR_DEFAULT / "matchy-localhost-cert.pem"
+TLS_KEY_DEFAULT = TLS_DIR_DEFAULT / "matchy-localhost-key.pem"
 
 
 def _is_auth_failure(status_code: int, body: str) -> bool:
@@ -229,29 +237,69 @@ def move_message(message_id: str, request: MoveRequest) -> dict[str, Any]:
     return {"moved": True, "folder_id": folder_id, "result_id": response.get("id", "")}
 
 
-if __name__ == "__main__":
+#R040: Resolve TLS cert/key paths and require HTTPS startup materials.
+#R045: Fail fast with explicit guidance when TLS cert/key files are missing.
+def _resolve_tls_materials() -> tuple[str, str]:
+    cert_file = Path(os.environ.get(TLS_CERT_ENV, str(TLS_CERT_DEFAULT))).expanduser()
+    key_file = Path(os.environ.get(TLS_KEY_ENV, str(TLS_KEY_DEFAULT))).expanduser()
+    if not cert_file.is_file():
+        raise SystemExit(
+            f"{TLS_CERT_ENV} is required and must point to an existing certificate file: {cert_file}. "
+            "Run ./05_install_matchy_api_tls.sh to install local TLS materials."
+        )
+    if not key_file.is_file():
+        raise SystemExit(
+            f"{TLS_KEY_ENV} is required and must point to an existing key file: {key_file}. "
+            "Run ./05_install_matchy_api_tls.sh to install local TLS materials."
+        )
+    return str(cert_file), str(key_file)
+
+
+def _is_port_in_use(host: str, port: int) -> bool:
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.settimeout(0.25)
+    in_use = sock.connect_ex((host, port)) == 0
+    sock.close()
+    return in_use
+
+
+def _existing_server_is_healthy(cert_file: str) -> bool:
+    try:
+        probe = requests.get(f"{API_HTTPS_BASE}/health", timeout=1.5, verify=cert_file)
+    except Exception:
+        return False
+    return probe.status_code == 200 and '"status":"ok"' in probe.text
+
+
+def _existing_http_server_is_healthy() -> bool:
+    try:
+        probe = requests.get(f"http://{API_HOST}:{API_PORT}/health", timeout=1.5)
+    except Exception:
+        return False
+    return probe.status_code == 200 and '"status":"ok"' in probe.text
+
+
+#R040: Start the Matchy Mailcart API with HTTPS-only uvicorn TLS settings.
+def run_server() -> None:
     if os.environ.get("OUTLOOK_GRAPH_CLIENT_ID", "").strip():
         try:
             _TOKEN_MANAGER.get_access_token()
         except GraphTokenError as exc:
             print(str(exc), file=sys.stderr)
             raise SystemExit(1) from exc
-    in_use = False
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.settimeout(0.25)
-    if sock.connect_ex(("127.0.0.1", 8788)) == 0:
-        in_use = True
-    sock.close()
-    if in_use:
-        healthy = False
-        try:
-            probe = requests.get("http://127.0.0.1:8788/health", timeout=1.5)
-            if probe.status_code == 200 and '"status":"ok"' in probe.text:
-                healthy = True
-        except Exception:
-            healthy = False
-        if healthy:
-            print("Mailcart API already running on 127.0.0.1:8788; reusing existing process.")
+    tls_cert_file, tls_key_file = _resolve_tls_materials()
+    if _is_port_in_use(API_HOST, API_PORT):
+        if _existing_server_is_healthy(tls_cert_file):
+            print(f"Mailcart API already running at {API_HTTPS_BASE}; reusing existing process.")
             raise SystemExit(0)
-        raise SystemExit("Port 8788 is already in use by another process.")
-    uvicorn.run(app, host="127.0.0.1", port=8788)
+        if _existing_http_server_is_healthy():
+            raise SystemExit(
+                f"Port {API_PORT} is occupied by a legacy HTTP Mailcart API process. "
+                "Stop the existing process and rerun make run-api to launch HTTPS."
+            )
+        raise SystemExit(f"Port {API_PORT} is already in use by another process.")
+    uvicorn.run(app, host=API_HOST, port=API_PORT, ssl_certfile=tls_cert_file, ssl_keyfile=tls_key_file)
+
+
+if __name__ == "__main__":
+    run_server()

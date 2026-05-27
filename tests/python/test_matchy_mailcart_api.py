@@ -10,6 +10,7 @@
 
 from __future__ import annotations
 
+import tempfile
 import sys
 import unittest
 from pathlib import Path
@@ -173,6 +174,106 @@ class MessageIdEncodingTests(unittest.TestCase):
             result = api.move_message("abc123==", api.MoveRequest(folder_name="matchy"))
         self.assertEqual(graph_post.call_args.args[0], "/me/messages/abc123%3D%3D/move")
         self.assertEqual(result["moved"], True)
+
+
+class HttpsStartupTests(unittest.TestCase):
+    def test_api_base_is_https_only(self) -> None:
+        self.assertTrue(api.API_HTTPS_BASE.startswith("https://"))
+        self.assertFalse(api.API_HTTPS_BASE.startswith("http://"))
+
+    def test_resolve_tls_materials_rejects_missing_cert(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            cert_path = Path(temp_dir) / "missing-cert.pem"
+            key_path = Path(temp_dir) / "key.pem"
+            key_path.write_text("key", encoding="utf-8")
+            with mock.patch.dict(
+                api.os.environ,
+                {
+                    api.TLS_CERT_ENV: str(cert_path),
+                    api.TLS_KEY_ENV: str(key_path),
+                },
+                clear=False,
+            ):
+                with self.assertRaises(SystemExit) as ctx:
+                    api._resolve_tls_materials()
+        self.assertIn(api.TLS_CERT_ENV, str(ctx.exception))
+
+    def test_run_server_uses_https_probe_for_existing_process(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            cert_path = Path(temp_dir) / "cert.pem"
+            key_path = Path(temp_dir) / "key.pem"
+            cert_path.write_text("cert", encoding="utf-8")
+            key_path.write_text("key", encoding="utf-8")
+            response = mock.Mock(status_code=200, text='{"status":"ok"}')
+            with (
+                mock.patch.dict(
+                    api.os.environ,
+                    {
+                        "OUTLOOK_GRAPH_CLIENT_ID": "",
+                        api.TLS_CERT_ENV: str(cert_path),
+                        api.TLS_KEY_ENV: str(key_path),
+                    },
+                    clear=False,
+                ),
+                mock.patch.object(api, "_is_port_in_use", return_value=True),
+                mock.patch.object(api.requests, "get", return_value=response) as get_mock,
+            ):
+                with self.assertRaises(SystemExit) as ctx:
+                    api.run_server()
+        self.assertEqual(ctx.exception.code, 0)
+        get_mock.assert_called_once_with("https://127.0.0.1:8788/health", timeout=1.5, verify=str(cert_path))
+
+    def test_run_server_starts_uvicorn_with_ssl_files(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            cert_path = Path(temp_dir) / "cert.pem"
+            key_path = Path(temp_dir) / "key.pem"
+            cert_path.write_text("cert", encoding="utf-8")
+            key_path.write_text("key", encoding="utf-8")
+            with (
+                mock.patch.dict(
+                    api.os.environ,
+                    {
+                        "OUTLOOK_GRAPH_CLIENT_ID": "",
+                        api.TLS_CERT_ENV: str(cert_path),
+                        api.TLS_KEY_ENV: str(key_path),
+                    },
+                    clear=False,
+                ),
+                mock.patch.object(api, "_is_port_in_use", return_value=False),
+                mock.patch.object(api.uvicorn, "run") as uvicorn_run,
+            ):
+                api.run_server()
+        uvicorn_run.assert_called_once_with(
+            api.app,
+            host="127.0.0.1",
+            port=8788,
+            ssl_certfile=str(cert_path),
+            ssl_keyfile=str(key_path),
+        )
+
+    def test_run_server_reports_legacy_http_process_conflict(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            cert_path = Path(temp_dir) / "cert.pem"
+            key_path = Path(temp_dir) / "key.pem"
+            cert_path.write_text("cert", encoding="utf-8")
+            key_path.write_text("key", encoding="utf-8")
+            with (
+                mock.patch.dict(
+                    api.os.environ,
+                    {
+                        "OUTLOOK_GRAPH_CLIENT_ID": "",
+                        api.TLS_CERT_ENV: str(cert_path),
+                        api.TLS_KEY_ENV: str(key_path),
+                    },
+                    clear=False,
+                ),
+                mock.patch.object(api, "_is_port_in_use", return_value=True),
+                mock.patch.object(api, "_existing_server_is_healthy", return_value=False),
+                mock.patch.object(api, "_existing_http_server_is_healthy", return_value=True),
+            ):
+                with self.assertRaises(SystemExit) as ctx:
+                    api.run_server()
+        self.assertIn("legacy HTTP Mailcart API process", str(ctx.exception))
 
 
 if __name__ == "__main__":

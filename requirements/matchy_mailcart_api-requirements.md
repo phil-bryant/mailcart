@@ -66,8 +66,21 @@ Tests:
 - R035-T01: Mock Graph response with HTML and plain-text bodies and verify field mapping and route registration.
 - R035-T02: Pass a blank message id and verify HTTP 400 is raised.
 
+R040  Statement: Start the Matchy Mailcart API over HTTPS only.
+Design: API startup resolves TLS cert/key file paths from `MAILCART_MATCHY_TLS_CERT_FILE` and `MAILCART_MATCHY_TLS_KEY_FILE` (with localhost defaults under `~/.mailcart`) and launches uvicorn with `ssl_certfile` and `ssl_keyfile`.
+Tests:
+- Mock startup dependencies and verify uvicorn receives SSL cert/key parameters.
+- Verify reuse health probes target `https://127.0.0.1:8788/health`.
+
+R045  Statement: Fail fast when required API TLS materials are missing.
+Design: Startup exits non-zero with explicit guidance when either configured TLS cert or key file does not exist.
+Tests:
+- Run startup with missing `MAILCART_MATCHY_TLS_CERT_FILE` and verify explicit failure message.
+- Run startup with missing `MAILCART_MATCHY_TLS_KEY_FILE` and verify explicit failure message.
+
 ## Changelog
 
 - 2026-05-12: Added script-scoped Matchy API requirements for `scripts/matchy_mailcart_api.py`.
 - 2026-05-19: Added OAuth refresh, retry-on-401, cache persistence, health token status, and auth error surfacing requirements.
 - 2026-05-19: Added R035 single-message fetch endpoint for downstream UIs (Teller Match Review three-pane view).
+- 2026-05-27: Added HTTPS-only startup (R040) and fail-fast TLS material validation (R045) for Matchy Mailcart API.
