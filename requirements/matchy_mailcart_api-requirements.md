@@ -24,10 +24,17 @@ Design: Raise API error with explicit `OUTLOOK_GRAPH_TOKEN is required` detail w
 Tests:
 - Execute header generation with empty token and verify explicit error detail.
 
-R020  Statement: Expose message search with optional text filtering and bounded limit.
-Design: Fetch recent messages, optionally filter by query against subject/preview, and return up to requested limit.
+R020  Statement: Expose strict scoped message search with field filters, inclusive date bounds, normalization, AND semantics, and bounded limit.
+Design: `GET /v1/messages/search?query=...&limit=...` accepts only scoped tokens (`subject:`, `sender:`, `body:`, `from:`, `to:`). Text matching is case-insensitive and normalizes trim + collapsed whitespace. `body:` matches full message body content (including HTML converted to text). Multiple tokens combine with logical AND. Date filters are inclusive by received date, and unsupported/unscoped tokens return HTTP 400.
 Tests:
-- Stub Graph message payload and verify query filtering and limit handling in response.
+- Verify field scoping correctness (`subject:doordash`, `sender:doordash`, `body:doordash`) returns only the expected seeded message per field.
+- Verify case-insensitive behavior returns identical results for mixed-case query variants.
+- Verify whitespace-normalized query values match canonical message values in subject/sender/body.
+- Verify AND semantics across multiple scoped tokens returns only messages satisfying every token.
+- Verify inclusive `from:`/`to:` date bounds include boundary-day messages and exclude out-of-range messages.
+- Verify combined text + date filters apply AND semantics across text/date dimensions.
+- Verify token order does not change results for equivalent scoped-token sets.
+- Verify unsupported/unscoped token content returns HTTP 400.
 
 R025  Statement: Move a message to a named folder, creating folder when needed.
 Design: Resolve destination folder by display name (case-insensitive), create if absent, then call Graph move API.
@@ -84,3 +91,4 @@ Tests:
 - 2026-05-19: Added OAuth refresh, retry-on-401, cache persistence, health token status, and auth error surfacing requirements.
 - 2026-05-19: Added R035 single-message fetch endpoint for downstream UIs (Teller Match Review three-pane view).
 - 2026-05-27: Added HTTPS-only startup (R040) and fail-fast TLS material validation (R045) for Matchy Mailcart API.
+- 2026-05-28: Updated R020 to strict scoped-token search contract with full-body matching, normalization, inclusive dates, AND semantics, and 400 on unsupported/unscoped tokens.

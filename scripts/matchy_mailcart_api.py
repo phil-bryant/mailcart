@@ -8,7 +8,10 @@
 
 from __future__ import annotations
 
+from datetime import date, datetime
+from html import unescape
 import os
+import re
 import socket
 import sys
 from urllib.parse import quote, unquote
@@ -107,6 +110,153 @@ def _graph_message_path(message_id: str) -> str:
     return f"/me/messages/{quote(normalized_id, safe='')}"
 
 
+_TOKEN_PATTERN = re.compile(r"(?i)\b(subject|sender|body|from|to)\s*:")
+
+
+def _normalize_search_text(value: str) -> str:
+    #R020: Normalize scoped search text by trimming, collapsing whitespace, and case-folding.
+    return re.sub(r"\s+", " ", value.strip()).casefold()
+
+
+def _strip_html(value: str) -> str:
+    #R020: Convert HTML body payloads to plain searchable text before normalization.
+    no_script = re.sub(r"(?is)<(script|style)\b[^>]*>.*?</\1>", " ", value)
+    no_tags = re.sub(r"(?s)<[^>]+>", " ", no_script)
+    return unescape(no_tags)
+
+
+def _extract_body_text(message: dict[str, Any]) -> str:
+    #R020: Evaluate body: tokens against full body content when available.
+    body_obj = message.get("body") or {}
+    if not isinstance(body_obj, dict):
+        return str(message.get("bodyPreview", ""))
+    content = str(body_obj.get("content", ""))
+    content_type = str(body_obj.get("contentType", "")).casefold()
+    if content_type == "html":
+        return _strip_html(content)
+    if content_type == "text":
+        return content
+    return str(message.get("bodyPreview", ""))
+
+
+def _parse_iso_date(value: str) -> date:
+    #R020: Enforce strict yyyy-mm-dd parsing for from:/to: scoped filters.
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
+        raise ValueError("date must use yyyy-mm-dd")
+    return date.fromisoformat(value)
+
+
+def _parse_received_at_date(value: str) -> date | None:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00")).date()
+    except ValueError:
+        return None
+
+
+def _parse_scoped_query(query: str) -> dict[str, list[str] | date | None]:
+    #R020: Parse scoped search tokens and reject unsupported/unprefixed token text.
+    normalized_query = query.strip()
+    if not normalized_query:
+        return {
+            "subject": [],
+            "sender": [],
+            "body": [],
+            "from": None,
+            "to": None,
+        }
+    matches = list(_TOKEN_PATTERN.finditer(normalized_query))
+    if not matches:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid query: use scoped tokens subject:, sender:, body:, from:, or to:.",
+        )
+    parsed: dict[str, list[str] | date | None] = {
+        "subject": [],
+        "sender": [],
+        "body": [],
+        "from": None,
+        "to": None,
+    }
+    cursor = 0
+    for index, match in enumerate(matches):
+        prefix_region = normalized_query[cursor : match.start()]
+        if prefix_region.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid query: unsupported or unscoped token content detected.",
+            )
+        token = match.group(1).casefold()
+        value_start = match.end()
+        value_end = matches[index + 1].start() if index + 1 < len(matches) else len(normalized_query)
+        raw_value = normalized_query[value_start:value_end].strip()
+        if not raw_value:
+            raise HTTPException(status_code=400, detail=f"Invalid query: {token}: requires a value.")
+        if token in ("subject", "sender", "body"):
+            normalized_value = _normalize_search_text(raw_value)
+            if not normalized_value:
+                raise HTTPException(status_code=400, detail=f"Invalid query: {token}: requires text.")
+            cast_values = parsed[token]
+            if not isinstance(cast_values, list):
+                raise HTTPException(status_code=500, detail="Search token parser state error.")
+            cast_values.append(normalized_value)
+        elif token == "from":  # nosec B105
+            if parsed["from"] is not None:
+                raise HTTPException(status_code=400, detail="Invalid query: duplicate from: token.")
+            try:
+                parsed["from"] = _parse_iso_date(raw_value)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=f"Invalid query: from: {exc}") from exc
+        else:  # token == "to"
+            if parsed["to"] is not None:
+                raise HTTPException(status_code=400, detail="Invalid query: duplicate to: token.")
+            try:
+                parsed["to"] = _parse_iso_date(raw_value)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=f"Invalid query: to: {exc}") from exc
+        cursor = value_end
+    if normalized_query[cursor:].strip():
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid query: unsupported or unscoped token content detected.",
+        )
+    from_date = parsed["from"]
+    to_date = parsed["to"]
+    if isinstance(from_date, date) and isinstance(to_date, date) and from_date > to_date:
+        raise HTTPException(status_code=400, detail="Invalid query: from: date cannot be after to: date.")
+    return parsed
+
+
+def _message_matches_criteria(message: dict[str, Any], criteria: dict[str, list[str] | date | None]) -> bool:
+    #R020: Apply AND semantics across scoped text and inclusive date range filters.
+    subject = _normalize_search_text(str(message.get("subject", "")))
+    sender = _normalize_search_text(str((((message.get("from") or {}).get("emailAddress") or {}).get("address")) or ""))
+    body_text = _normalize_search_text(_extract_body_text(message))
+    subject_filters = criteria["subject"] if isinstance(criteria["subject"], list) else []
+    sender_filters = criteria["sender"] if isinstance(criteria["sender"], list) else []
+    body_filters = criteria["body"] if isinstance(criteria["body"], list) else []
+    for token in subject_filters:
+        if token not in subject:
+            return False
+    for token in sender_filters:
+        if token not in sender:
+            return False
+    for token in body_filters:
+        if token not in body_text:
+            return False
+    received_at_date = _parse_received_at_date(str(message.get("receivedDateTime", "")))
+    from_date = criteria["from"]
+    to_date = criteria["to"]
+    if isinstance(from_date, date):
+        if received_at_date is None or received_at_date < from_date:
+            return False
+    if isinstance(to_date, date):
+        if received_at_date is None or received_at_date > to_date:
+            return False
+    return True
+
+
 #R025: Resolve destination mail folder by name, creating it when absent.
 def _get_or_create_folder_id(folder_name: str) -> str:
     folders = _graph_get("/me/mailFolders", params={"$select": "id,displayName", "$top": "200"})
@@ -137,48 +287,27 @@ def health() -> dict[str, str]:
 
 @app.get("/v1/messages/search")
 #R020: Return recent messages and apply optional text filtering with caller limit.
-def search_messages(query: str = Query(default="", max_length=160), limit: int = Query(default=50, ge=1, le=100)) -> dict[str, Any]:
-    payload: dict[str, Any] = {"value": []}
+def search_messages(query: str = Query(default="", max_length=400), limit: int = Query(default=50, ge=1, le=100)) -> dict[str, Any]:
+    criteria = _parse_scoped_query(query)
     normalized_query = query.strip()
-    search_error: HTTPException | None = None
-    if normalized_query:
-        try:
-            payload = _graph_get(
-                "/me/messages",
-                params={"$select": "id,subject,bodyPreview,receivedDateTime,from", "$search": f"\"{normalized_query}\"", "$top": str(limit)},
-            )
-        except HTTPException as exc:
-            if exc.status_code == 502 and isinstance(exc.detail, str) and _is_auth_failure(401, exc.detail):
-                raise
-            search_error = exc
-            payload = {"value": []}
+    payload: dict[str, Any] = {"value": []}
     #R030: Surface Graph auth failures explicitly instead of swallowing them as empty `{"messages": []}` results.
-    if not payload.get("value"):
-        try:
-            payload = _graph_get(
-                "/me/messages",
-                params={
-                    "$select": "id,subject,bodyPreview,receivedDateTime,from",
-                    "$orderby": "receivedDateTime DESC",
-                    "$top": str(max(limit * 8, 200) if normalized_query else max(limit, 50)),
-                },
-            )
-        except HTTPException as exc:
-            if exc.status_code == 502 and isinstance(exc.detail, str) and _is_auth_failure(401, exc.detail):
-                raise
-            if search_error is not None:
-                raise search_error
-            raise
-    normalized_query_lc = normalized_query.lower()
+    payload = _graph_get(
+        "/me/messages",
+        params={
+            "$select": "id,subject,bodyPreview,body,receivedDateTime,from",
+            "$orderby": "receivedDateTime DESC",
+            "$top": str(max(limit * 8, 200) if normalized_query else max(limit, 50)),
+        },
+    )
     messages = []
     for row in payload.get("value", []):
         subject = str(row.get("subject", ""))
         preview = str(row.get("bodyPreview", ""))
         sender = str((((row.get("from") or {}).get("emailAddress") or {}).get("address")) or "")
-        if normalized_query_lc:
-            blob = f"{subject} {preview} {sender}".lower()
-            if normalized_query_lc not in blob:
-                continue
+        body_text = _extract_body_text(row)
+        if normalized_query and not _message_matches_criteria(row, criteria):
+            continue
         messages.append(
             {
                 "message_id": str(row.get("id", "")),
@@ -186,7 +315,7 @@ def search_messages(query: str = Query(default="", max_length=160), limit: int =
                 "preview": preview,
                 "received_at": str(row.get("receivedDateTime", "")),
                 "sender": sender,
-                "body_text": preview,
+                "body_text": body_text,
             }
         )
         if len(messages) >= limit:
@@ -273,7 +402,8 @@ def _existing_server_is_healthy(cert_file: str) -> bool:
 
 def _existing_http_server_is_healthy() -> bool:
     try:
-        probe = requests.get(f"http://{API_HOST}:{API_PORT}/health", timeout=1.5)
+        # Intentional localhost HTTP probe to detect and report a legacy non-TLS Mailcart API process.
+        probe = requests.get(f"http://{API_HOST}:{API_PORT}/health", timeout=1.5)  # nosemgrep: python.lang.security.audit.insecure-transport.requests.request-with-http.request-with-http
     except Exception:
         return False
     return probe.status_code == 200 and '"status":"ok"' in probe.text

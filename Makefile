@@ -25,7 +25,7 @@ MAILCART_MATCHY_TLS_KEY_FILE ?= $(MAILCART_MATCHY_TLS_DIR)/matchy-localhost-key.
 
 .PHONY: help build test ui-test run run-ui crash crash-reporter-smoke \
 	sast lint clam clean \
-	_cpp-test _bridge-check _ui-typecheck _ui-build _ui-rebuild _shell-tests _ui-regression _ui-xcuitests _ui-smoke \
+	_cpp-test _bridge-check _ui-typecheck _ui-build _ui-rebuild _shell-tests _python-tests _ui-regression _ui-xcuitests _ui-smoke \
 	_sast_shell _sast_semgrep _sast_bandit _sast_detect_secrets _sast_clang_tidy _sast_secrets \
 	_lint_swiftlint _lint_python_equivalent \
 	verify-macos-crash-reporter run-api
@@ -37,7 +37,7 @@ help:
 	@echo "  make clam    - Run Clam AntiVirus recursive scan for this repository"
 	@echo "  make build   - Build bridge checks, UI typecheck, and app binary"
 	@echo "  make sast    - Run SAST (ShellCheck, Semgrep, Bandit, detect-secrets, gitleaks)"
-	@echo "  make test    - Run C++ integration test and all ./tests/sh/*.bats tests"
+	@echo "  make test    - Run C++ integration, Python API, and shell BATS tests"
 	@echo "  make ui-test - Run inline + XCUITest UI regressions and app smoke launch check"
 	@echo "  make crash   - Verify PLCrashReporter crash capture and replay flow"
 	@echo "  make run-ui  - Build and launch macOS app"
@@ -52,7 +52,7 @@ help:
 build: _bridge-check _ui-typecheck _ui-build
 
 #R005: Run C++ integration plus full shell BATS regression coverage.
-test: _cpp-test _shell-tests
+test: _cpp-test _python-tests _shell-tests
 
 #R035: Run UI-focused test lane.
 ui-test: _ui-build
@@ -239,6 +239,9 @@ _shell-tests:
 	else \
 		echo "No shell tests found."; \
 	fi
+
+_python-tests:
+	@python3 -m unittest discover -s tests/python -p 'test_*.py'
 
 _ui-regression:
 	@printf '%s\n' \

@@ -21,6 +21,138 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 import matchy_mailcart_api as api  # noqa: E402
 
 
+class SearchMessagesTests(unittest.TestCase):
+    def _search(self, query: str, rows: list[dict[str, object]], limit: int = 50) -> dict[str, object]:
+        with mock.patch.object(api, "_graph_get", return_value={"value": rows}) as graph_get:
+            result = api.search_messages(query=query, limit=limit)
+        graph_get.assert_called_once()
+        return result
+
+    def _mk_message(
+        self,
+        message_id: str,
+        *,
+        subject: str = "",
+        sender: str = "",
+        preview: str = "",
+        body_content: str = "",
+        body_content_type: str = "text",
+        received_at: str = "2026-04-15T12:00:00Z",
+    ) -> dict[str, object]:
+        return {
+            "id": message_id,
+            "subject": subject,
+            "bodyPreview": preview,
+            "body": {"contentType": body_content_type, "content": body_content},
+            "from": {"emailAddress": {"address": sender}},
+            "receivedDateTime": received_at,
+        }
+
+    def test_field_scoping_filters_subject_sender_body_independently(self) -> None:
+        #R020-T01
+        rows = [
+            self._mk_message("msg1", subject="DoorDash receipt", sender="merchant@example.com", body_content="hello"),
+            self._mk_message("msg2", subject="Hello", sender="doordash@merchant.com", body_content="hello"),
+            self._mk_message("msg3", subject="Hello", sender="merchant@example.com", body_content="DOORDASH order details"),
+        ]
+        subject_ids = [m["message_id"] for m in self._search("subject:doordash", rows)["messages"]]
+        sender_ids = [m["message_id"] for m in self._search("sender:doordash", rows)["messages"]]
+        body_ids = [m["message_id"] for m in self._search("body:doordash", rows)["messages"]]
+        self.assertEqual(subject_ids, ["msg1"])
+        self.assertEqual(sender_ids, ["msg2"])
+        self.assertEqual(body_ids, ["msg3"])
+
+    def test_case_insensitive_field_matches_return_same_results(self) -> None:
+        #R020-T01
+        rows = [
+            self._mk_message("msg1", subject="DoorDash", sender="shop@example.com", body_content="x"),
+            self._mk_message("msg2", subject="x", sender="DoorDash@shop.com", body_content="x"),
+            self._mk_message("msg3", subject="x", sender="shop@example.com", body_content="DOORDASH body"),
+        ]
+        expected_subject = ["msg1"]
+        expected_sender = ["msg2"]
+        expected_body = ["msg3"]
+        for variant in ("DoorDash", "doordash", "DOORDASH"):
+            with self.subTest(variant=variant):
+                subject_ids = [m["message_id"] for m in self._search(f"subject:{variant}", rows)["messages"]]
+                sender_ids = [m["message_id"] for m in self._search(f"sender:{variant}", rows)["messages"]]
+                body_ids = [m["message_id"] for m in self._search(f"body:{variant}", rows)["messages"]]
+                self.assertEqual(subject_ids, expected_subject)
+                self.assertEqual(sender_ids, expected_sender)
+                self.assertEqual(body_ids, expected_body)
+
+    def test_whitespace_normalization_matches_irregular_spacing(self) -> None:
+        #R020-T01
+        rows = [
+            self._mk_message("subject", subject="DoorDash order total", sender="x@example.com", body_content="x"),
+            self._mk_message("sender", subject="x", sender="DoorDash order total", body_content="x"),
+            self._mk_message("body", subject="x", sender="x@example.com", body_content="DoorDash order total"),
+        ]
+        subject_ids = [m["message_id"] for m in self._search("subject:  DoorDash   order    total", rows)["messages"]]
+        sender_ids = [m["message_id"] for m in self._search("sender:  DoorDash   order    total", rows)["messages"]]
+        body_ids = [m["message_id"] for m in self._search("body:  DoorDash   order    total", rows)["messages"]]
+        self.assertEqual(subject_ids, ["subject"])
+        self.assertEqual(sender_ids, ["sender"])
+        self.assertEqual(body_ids, ["body"])
+
+    def test_multiple_tokens_use_and_semantics(self) -> None:
+        #R020-T01
+        rows = [
+            self._mk_message("msgA", subject="receipt available", sender="hello@example.com", body_content="x"),
+            self._mk_message("msgB", subject="invoice", sender="doordash@shop.com", body_content="x"),
+            self._mk_message("msgC", subject="receipt from store", sender="doordash@shop.com", body_content="x"),
+        ]
+        ids = [m["message_id"] for m in self._search("subject:receipt sender:doordash", rows)["messages"]]
+        self.assertEqual(ids, ["msgC"])
+
+    def test_date_bounds_are_inclusive(self) -> None:
+        #R020-T01
+        rows = [
+            self._mk_message("start", received_at="2026-04-01T00:00:00Z"),
+            self._mk_message("middle", received_at="2026-04-15T12:00:00Z"),
+            self._mk_message("end", received_at="2026-04-30T23:59:59Z"),
+            self._mk_message("outside_before", received_at="2026-03-31T23:59:59Z"),
+            self._mk_message("outside_after", received_at="2026-05-01T00:00:00Z"),
+        ]
+        ids = [m["message_id"] for m in self._search("from:2026-04-01 to:2026-04-30", rows)["messages"]]
+        self.assertEqual(ids, ["start", "middle", "end"])
+
+    def test_text_and_date_filters_are_combined_with_and(self) -> None:
+        #R020-T01
+        rows = [
+            self._mk_message("in_range_match", sender="doordash@shop.com", received_at="2026-04-10T10:00:00Z"),
+            self._mk_message("out_of_range_match", sender="doordash@shop.com", received_at="2026-05-10T10:00:00Z"),
+            self._mk_message("in_range_no_match", sender="other@shop.com", received_at="2026-04-10T10:00:00Z"),
+        ]
+        ids = [
+            m["message_id"]
+            for m in self._search("sender:doordash from:2026-04-01 to:2026-04-30", rows)["messages"]
+        ]
+        self.assertEqual(ids, ["in_range_match"])
+
+    def test_token_order_does_not_change_results(self) -> None:
+        #R020-T01
+        rows = [
+            self._mk_message("x", subject="receipt", sender="doordash@shop.com"),
+            self._mk_message("y", subject="receipt", sender="other@shop.com"),
+        ]
+        query_a = "subject:receipt sender:doordash"
+        query_b = "sender:doordash subject:receipt"
+        ids_a = [m["message_id"] for m in self._search(query_a, rows)["messages"]]
+        ids_b = [m["message_id"] for m in self._search(query_b, rows)["messages"]]
+        self.assertEqual(ids_a, ids_b)
+        self.assertEqual(ids_a, ["x"])
+
+    def test_invalid_or_unscoped_tokens_return_400(self) -> None:
+        #R020-T01
+        with self.assertRaises(Exception) as unscoped_ctx:
+            api.search_messages(query="doordash", limit=10)
+        self.assertEqual(getattr(unscoped_ctx.exception, "status_code", None), 400)
+        with self.assertRaises(Exception) as unsupported_ctx:
+            api.search_messages(query="foo:bar", limit=10)
+        self.assertEqual(getattr(unsupported_ctx.exception, "status_code", None), 400)
+
+
 class GetMessageEndpointTests(unittest.TestCase):
     def test_get_message_returns_full_body_for_html(self) -> None:
         #R035-T01

@@ -598,15 +598,20 @@ EOF
 @test "R005: test target runs C++ integration and all shell tests" {
   #R005
   create_compiler_stub
+  create_python3_stub
   create_bats_stub
   mkdir -p "${SANDBOX}/tests/sh"
+  mkdir -p "${SANDBOX}/tests/python"
   : > "${SANDBOX}/tests/sh/mailcart.bats"
   : > "${SANDBOX}/tests/sh/Bridge.bats"
   : > "${SANDBOX}/tests/sh/UI.bats"
+  : > "${SANDBOX}/tests/python/test_matchy_mailcart_api.py"
   run_make test
   [ "$status" -eq 0 ]
   [ -x "${SANDBOX}/.build/outlook_integration_test" ]
   run rg "clang\+\+ -std=c\+\+17" "${TEST_LOG}"
+  [ "$status" -eq 0 ]
+  run rg "^python3 -m unittest discover -s tests/python -p test_\\*\\.py$" "${TEST_LOG}"
   [ "$status" -eq 0 ]
   run rg "bats +tests/sh/Bridge.bats tests/sh/UI.bats tests/sh/mailcart.bats" "${TEST_LOG}"
   [ "$status" -eq 0 ]

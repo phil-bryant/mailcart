@@ -236,6 +236,7 @@ if requirements_stem.endswith("-requirements.md"):
     requirements_stem = requirements_stem[:-len("-requirements.md")]
 add_path(f"tests/sh/{requirements_stem}.bats", "default")
 add_path(f"tests/py/test_{requirements_stem}.py", "default")
+add_path(f"tests/python/test_{requirements_stem}.py", "default")
 
 for source_file in source_files:
     if os.path.isabs(source_file):
@@ -254,6 +255,7 @@ for source_file in source_files:
     if ext == ".py":
         if source_norm.startswith("teller/"):
             add_path(f"tests/py/test_{stem}.py", "default")
+            add_path(f"tests/python/test_{stem}.py", "default")
         elif source_norm.startswith(tuple(f"{n:02d}_" for n in range(100))):
             add_path(f"tests/sh/{stem}.bats", "default")
     if ext == ".sql":
