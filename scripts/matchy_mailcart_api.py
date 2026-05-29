@@ -14,7 +14,7 @@ import os
 import re
 import socket
 import sys
-from urllib.parse import quote, unquote
+from urllib.parse import parse_qsl, quote, unquote, urlsplit
 from pathlib import Path
 from typing import Any
 
@@ -102,6 +102,18 @@ def _graph_get(path: str, params: dict[str, Any] | None = None) -> dict[str, Any
 
 def _graph_post(path: str, payload: dict[str, Any]) -> dict[str, Any]:
     return _graph_request("POST", path, payload=payload)
+
+
+def _graph_get_next_link(next_link: str) -> dict[str, Any]:
+    parsed_next = urlsplit(next_link)
+    parsed_base = urlsplit(GRAPH_BASE)
+    if (parsed_next.scheme, parsed_next.netloc) != (parsed_base.scheme, parsed_base.netloc):
+        raise HTTPException(status_code=502, detail="Graph pagination returned an unexpected host")
+    path = parsed_next.path
+    if parsed_base.path and path.startswith(parsed_base.path):
+        path = path[len(parsed_base.path) :] or "/"
+    params = dict(parse_qsl(parsed_next.query, keep_blank_values=True))
+    return _graph_get(path, params=params)
 
 
 def _graph_message_path(message_id: str) -> str:
@@ -290,36 +302,72 @@ def health() -> dict[str, str]:
 def search_messages(query: str = Query(default="", max_length=400), limit: int = Query(default=50, ge=1, le=100)) -> dict[str, Any]:
     criteria = _parse_scoped_query(query)
     normalized_query = query.strip()
-    payload: dict[str, Any] = {"value": []}
+    from_date = criteria["from"]
+    to_date = criteria["to"]
+    graph_params: dict[str, Any] = {
+        "$select": "id,subject,bodyPreview,body,receivedDateTime,from",
+        "$orderby": "receivedDateTime DESC",
+        "$top": str(max(limit * 8, 200) if normalized_query else max(limit, 50)),
+    }
+    graph_filters: list[str] = []
+    if isinstance(from_date, date):
+        graph_filters.append(f"receivedDateTime ge {from_date.isoformat()}T00:00:00Z")
+    if isinstance(to_date, date):
+        graph_filters.append(f"receivedDateTime le {to_date.isoformat()}T23:59:59Z")
+    if graph_filters:
+        graph_params["$filter"] = " and ".join(graph_filters)
     #R030: Surface Graph auth failures explicitly instead of swallowing them as empty `{"messages": []}` results.
-    payload = _graph_get(
+    payload: dict[str, Any] = _graph_get(
         "/me/messages",
-        params={
-            "$select": "id,subject,bodyPreview,body,receivedDateTime,from",
-            "$orderby": "receivedDateTime DESC",
-            "$top": str(max(limit * 8, 200) if normalized_query else max(limit, 50)),
-        },
+        params=graph_params,
     )
     messages = []
-    for row in payload.get("value", []):
-        subject = str(row.get("subject", ""))
-        preview = str(row.get("bodyPreview", ""))
-        sender = str((((row.get("from") or {}).get("emailAddress") or {}).get("address")) or "")
-        body_text = _extract_body_text(row)
-        if normalized_query and not _message_matches_criteria(row, criteria):
-            continue
-        messages.append(
-            {
-                "message_id": str(row.get("id", "")),
-                "subject": subject,
-                "preview": preview,
-                "received_at": str(row.get("receivedDateTime", "")),
-                "sender": sender,
-                "body_text": body_text,
-            }
-        )
-        if len(messages) >= limit:
+    should_paginate = isinstance(from_date, date) or isinstance(to_date, date)
+    max_scanned_rows = max(limit * 100, 2_000) if should_paginate else max(limit * 8, 200)
+    scanned_rows = 0
+    while True:
+        page_rows = payload.get("value", [])
+        if not isinstance(page_rows, list):
+            page_rows = []
+        oldest_received_on_page: date | None = None
+        for row in page_rows:
+            if not isinstance(row, dict):
+                continue
+            scanned_rows += 1
+            received_at_date = _parse_received_at_date(str(row.get("receivedDateTime", "")))
+            if isinstance(received_at_date, date):
+                if oldest_received_on_page is None or received_at_date < oldest_received_on_page:
+                    oldest_received_on_page = received_at_date
+            subject = str(row.get("subject", ""))
+            preview = str(row.get("bodyPreview", ""))
+            sender = str((((row.get("from") or {}).get("emailAddress") or {}).get("address")) or "")
+            body_text = _extract_body_text(row)
+            if normalized_query and not _message_matches_criteria(row, criteria):
+                continue
+            messages.append(
+                {
+                    "message_id": str(row.get("id", "")),
+                    "subject": subject,
+                    "preview": preview,
+                    "received_at": str(row.get("receivedDateTime", "")),
+                    "sender": sender,
+                    "body_text": body_text,
+                }
+            )
+            if len(messages) >= limit:
+                break
+        if len(messages) >= limit or not normalized_query:
             break
+        if not should_paginate:
+            break
+        if scanned_rows >= max_scanned_rows:
+            break
+        if isinstance(from_date, date) and isinstance(oldest_received_on_page, date) and oldest_received_on_page < from_date:
+            break
+        next_link = payload.get("@odata.nextLink")
+        if not isinstance(next_link, str) or not next_link:
+            break
+        payload = _graph_get_next_link(next_link)
     return {"messages": messages}
 
 

@@ -117,6 +117,16 @@ class SearchMessagesTests(unittest.TestCase):
         ids = [m["message_id"] for m in self._search("from:2026-04-01 to:2026-04-30", rows)["messages"]]
         self.assertEqual(ids, ["start", "middle", "end"])
 
+    def test_graph_query_includes_server_side_date_filter(self) -> None:
+        #R020-T01
+        with mock.patch.object(api, "_graph_get", return_value={"value": []}) as graph_get:
+            api.search_messages(query="from:2026-04-01 to:2026-04-30", limit=25)
+        _, kwargs = graph_get.call_args
+        params = kwargs.get("params", {})
+        self.assertIn("$filter", params)
+        self.assertIn("receivedDateTime ge 2026-04-01T00:00:00Z", params["$filter"])
+        self.assertIn("receivedDateTime le 2026-04-30T23:59:59Z", params["$filter"])
+
     def test_text_and_date_filters_are_combined_with_and(self) -> None:
         #R020-T01
         rows = [
@@ -143,6 +153,35 @@ class SearchMessagesTests(unittest.TestCase):
         self.assertEqual(ids_a, ids_b)
         self.assertEqual(ids_a, ["x"])
 
+    def test_matchy_scoped_query_shape_matches_expected_message(self) -> None:
+        #R020-T01
+        target = self._mk_message(
+            "target",
+            subject="DoorDash order confirmation",
+            sender="no-reply@doordash.com",
+            body_content="Tacombi receipt total $76.08",
+            received_at="2026-05-24T14:30:00Z",
+        )
+        wrong_merchant = self._mk_message(
+            "wrong_merchant",
+            subject="DoorDash order confirmation",
+            sender="no-reply@doordash.com",
+            body_content="Chopt receipt total $76.08",
+            received_at="2026-05-24T14:30:00Z",
+        )
+        out_of_window = self._mk_message(
+            "out_of_window",
+            subject="DoorDash order confirmation",
+            sender="no-reply@doordash.com",
+            body_content="Tacombi receipt total $76.08",
+            received_at="2025-01-10T14:30:00Z",
+        )
+        query = "subject:doordash body:tacombi from:2026-04-09 to:2026-07-08"
+        criteria = api._parse_scoped_query(query)
+        self.assertTrue(api._message_matches_criteria(target, criteria))
+        self.assertFalse(api._message_matches_criteria(wrong_merchant, criteria))
+        self.assertFalse(api._message_matches_criteria(out_of_window, criteria))
+
     def test_invalid_or_unscoped_tokens_return_400(self) -> None:
         #R020-T01
         with self.assertRaises(Exception) as unscoped_ctx:
@@ -151,6 +190,26 @@ class SearchMessagesTests(unittest.TestCase):
         with self.assertRaises(Exception) as unsupported_ctx:
             api.search_messages(query="foo:bar", limit=10)
         self.assertEqual(getattr(unsupported_ctx.exception, "status_code", None), 400)
+
+    def test_search_paginates_for_older_date_windows(self) -> None:
+        #R020-T01
+        page_one = [self._mk_message("newer", received_at="2026-05-27T10:00:00Z")]
+        page_two = [self._mk_message("older", received_at="2026-05-22T10:00:00Z")]
+        with (
+            mock.patch.object(
+                api,
+                "_graph_get",
+                return_value={
+                    "value": page_one,
+                    "@odata.nextLink": "https://graph.microsoft.com/v1.0/me/messages?$skiptoken=abc123",
+                },
+            ) as graph_get,
+            mock.patch.object(api, "_graph_get_next_link", return_value={"value": page_two}) as graph_get_next,
+        ):
+            result = api.search_messages(query="from:2026-05-20 to:2026-05-23", limit=10)
+        graph_get.assert_called_once()
+        graph_get_next.assert_called_once()
+        self.assertEqual([item["message_id"] for item in result["messages"]], ["older"])
 
 
 class GetMessageEndpointTests(unittest.TestCase):
