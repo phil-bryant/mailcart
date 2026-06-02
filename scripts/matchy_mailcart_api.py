@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+from collections import deque
 from datetime import date, datetime
 from html import unescape
 import os
@@ -240,33 +241,107 @@ def _parse_scoped_query(query: str) -> dict[str, list[str] | date | None]:
     return parsed
 
 
-def _message_matches_criteria(message: dict[str, Any], criteria: dict[str, list[str] | date | None]) -> bool:
+#R050: Aho-Corasick automaton: build a keyword trie with failure links so one linear pass over a
+#R050: message field reports every scoped filter that occurs as a substring, replacing the per-filter
+#R050: re-scan with a single O(text + patterns) traversal across the full-mailbox search.
+class AhoCorasick:
+    def __init__(self, patterns: list[str]) -> None:
+        self._goto: list[dict[str, int]] = [{}]
+        self._fail: list[int] = [0]
+        self._output: list[set[str]] = [set()]
+        for pattern in patterns:
+            if pattern:
+                self._add_pattern(pattern)
+        self._build_failure_links()
+
+    def _add_pattern(self, pattern: str) -> None:
+        node = 0
+        for char in pattern:
+            next_node = self._goto[node].get(char)
+            if next_node is None:
+                next_node = len(self._goto)
+                self._goto.append({})
+                self._fail.append(0)
+                self._output.append(set())
+                self._goto[node][char] = next_node
+            node = next_node
+        self._output[node].add(pattern)
+
+    def _build_failure_links(self) -> None:
+        queue: deque[int] = deque()
+        for next_node in self._goto[0].values():
+            queue.append(next_node)
+        while queue:
+            node = queue.popleft()
+            for char, next_node in self._goto[node].items():
+                queue.append(next_node)
+                fail_node = self._fail[node]
+                while fail_node != 0 and char not in self._goto[fail_node]:
+                    fail_node = self._fail[fail_node]
+                target = self._goto[fail_node].get(char, 0)
+                if target == next_node:
+                    target = 0
+                self._fail[next_node] = target
+                self._output[next_node] = self._output[next_node] | self._output[target]
+
+    #R050: Return the set of patterns occurring as substrings of text in a single pass.
+    def search(self, text: str) -> set[str]:
+        found: set[str] = set()
+        node = 0
+        for char in text:
+            while node != 0 and char not in self._goto[node]:
+                node = self._fail[node]
+            node = self._goto[node].get(char, 0)
+            found = found | self._output[node]
+        return found
+
+
+#R050: Build one Aho-Corasick matcher over the union of scoped text filters so it is constructed once
+#R050: per search request and reused across every scanned message.
+def _build_criteria_matcher(criteria: dict[str, list[str] | date | None]) -> AhoCorasick:
+    patterns: set[str] = set()
+    for field in ("subject", "sender", "body"):
+        values = criteria[field] if isinstance(criteria[field], list) else []
+        for value in values:
+            if value:
+                patterns.add(value)
+    return AhoCorasick(sorted(patterns))
+
+
+def _message_matches_criteria(message: dict[str, Any], criteria: dict[str, list[str] | date | None],
+                              matcher: AhoCorasick | None = None) -> bool:
     #R020: Apply AND semantics across scoped text and inclusive date range filters.
+    #R050: Resolve all scoped-token substring hits per field via a single Aho-Corasick pass.
+    active_matcher = matcher if matcher is not None else _build_criteria_matcher(criteria)
     subject = _normalize_search_text(str(message.get("subject", "")))
     sender = _normalize_search_text(str((((message.get("from") or {}).get("emailAddress") or {}).get("address")) or ""))
     body_text = _normalize_search_text(_extract_body_text(message))
+    subject_hits = active_matcher.search(subject)
+    sender_hits = active_matcher.search(sender)
+    body_hits = active_matcher.search(body_text)
     subject_filters = criteria["subject"] if isinstance(criteria["subject"], list) else []
     sender_filters = criteria["sender"] if isinstance(criteria["sender"], list) else []
     body_filters = criteria["body"] if isinstance(criteria["body"], list) else []
+    matches = True
     for token in subject_filters:
-        if token not in subject:
-            return False
+        if token not in subject_hits:
+            matches = False
     for token in sender_filters:
-        if token not in sender:
-            return False
+        if token not in sender_hits:
+            matches = False
     for token in body_filters:
-        if token not in body_text:
-            return False
+        if token not in body_hits:
+            matches = False
     received_at_date = _parse_received_at_date(str(message.get("receivedDateTime", "")))
     from_date = criteria["from"]
     to_date = criteria["to"]
     if isinstance(from_date, date):
         if received_at_date is None or received_at_date < from_date:
-            return False
+            matches = False
     if isinstance(to_date, date):
         if received_at_date is None or received_at_date > to_date:
-            return False
-    return True
+            matches = False
+    return matches
 
 
 #R025: Resolve destination mail folder by name, creating it when absent.
@@ -322,6 +397,8 @@ def search_messages(query: str = Query(default="", max_length=400), limit: int =
         params=graph_params,
     )
     messages = []
+    #R050: Construct the Aho-Corasick matcher once per request and reuse it for every scanned message.
+    criteria_matcher = _build_criteria_matcher(criteria)
     should_paginate = isinstance(from_date, date) or isinstance(to_date, date)
     max_scanned_rows = max(limit * 100, 2_000) if should_paginate else max(limit * 8, 200)
     scanned_rows = 0
@@ -342,7 +419,7 @@ def search_messages(query: str = Query(default="", max_length=400), limit: int =
             preview = str(row.get("bodyPreview", ""))
             sender = str((((row.get("from") or {}).get("emailAddress") or {}).get("address")) or "")
             body_text = _extract_body_text(row)
-            if normalized_query and not _message_matches_criteria(row, criteria):
+            if normalized_query and not _message_matches_criteria(row, criteria, matcher=criteria_matcher):
                 continue
             messages.append(
                 {

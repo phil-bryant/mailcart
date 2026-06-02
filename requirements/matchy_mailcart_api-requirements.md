@@ -87,6 +87,14 @@ Tests:
 - Run startup with missing `MAILCART_MATCHY_TLS_CERT_FILE` and verify explicit failure message.
 - Run startup with missing `MAILCART_MATCHY_TLS_KEY_FILE` and verify explicit failure message.
 
+R050  Statement: Match scoped text filters against each message field with a single-pass Aho-Corasick automaton instead of one substring scan per filter.
+Design: `AhoCorasick` builds a keyword trie with breadth-first failure links over the union of `subject:`/`sender:`/`body:` filter strings; `search` returns the set of filters occurring as substrings of a field in one O(text + patterns) pass. `_build_criteria_matcher` constructs the automaton once per `/v1/messages/search` request and `_message_matches_criteria` reuses it across every scanned message, preserving the existing case-insensitive, whitespace-normalized AND semantics and inclusive date bounds.
+Tests:
+- Verify the automaton reports all patterns that occur as substrings and omits absent ones in a single pass.
+- Verify overlapping patterns sharing suffixes (failure-link traversal) are all detected.
+- Verify `_message_matches_criteria` enforces per-field AND semantics with a prebuilt matcher and an implicitly built one.
+- Verify a built matcher yields identical field-scoping results to direct substring matching.
+
 ## Changelog
 
 - 2026-05-12: Added script-scoped Matchy API requirements for `scripts/matchy_mailcart_api.py`.

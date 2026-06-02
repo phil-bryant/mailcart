@@ -7,6 +7,7 @@
 # #R025-T02: Traceability anchor.
 # #R035-T01: Traceability anchor.
 # #R035-T02: Traceability anchor.
+# #R050-T01: Traceability anchor.
 
 from __future__ import annotations
 
@@ -465,6 +466,59 @@ class HttpsStartupTests(unittest.TestCase):
                 with self.assertRaises(SystemExit) as ctx:
                     api.run_server()
         self.assertIn("legacy HTTP Mailcart API process", str(ctx.exception))
+
+
+class AhoCorasickTests(unittest.TestCase):
+    def test_search_reports_substring_patterns_in_single_pass(self) -> None:
+        #R050-T01
+        matcher = api.AhoCorasick(["coffee", "order", "absent"])
+        self.assertEqual(matcher.search("your coffee order is ready"), {"coffee", "order"})
+
+    def test_search_detects_overlapping_suffix_patterns(self) -> None:
+        #R050-T01
+        matcher = api.AhoCorasick(["he", "she", "his", "hers"])
+        self.assertEqual(matcher.search("ushers"), {"she", "he", "hers"})
+
+    def test_empty_patterns_never_match(self) -> None:
+        #R050-T01
+        matcher = api.AhoCorasick(["", "x"])
+        self.assertEqual(matcher.search("anything"), set())
+
+    def test_message_matches_criteria_uses_prebuilt_matcher_for_and_semantics(self) -> None:
+        #R050-T01
+        criteria = {
+            "subject": ["receipt"],
+            "sender": [],
+            "body": ["doordash"],
+            "from": None,
+            "to": None,
+        }
+        matcher = api._build_criteria_matcher(criteria)
+        match = {
+            "subject": "Your Receipt",
+            "from": {"emailAddress": {"address": "noreply@store.com"}},
+            "body": {"contentType": "text", "content": "DoorDash order total"},
+            "receivedDateTime": "2026-04-15T12:00:00Z",
+        }
+        miss = {
+            "subject": "Your Receipt",
+            "from": {"emailAddress": {"address": "noreply@store.com"}},
+            "body": {"contentType": "text", "content": "unrelated body"},
+            "receivedDateTime": "2026-04-15T12:00:00Z",
+        }
+        self.assertTrue(api._message_matches_criteria(match, criteria, matcher=matcher))
+        self.assertFalse(api._message_matches_criteria(miss, criteria, matcher=matcher))
+
+    def test_message_matches_criteria_builds_matcher_when_absent(self) -> None:
+        #R050-T01
+        criteria = {"subject": [], "sender": ["doordash"], "body": [], "from": None, "to": None}
+        match = {
+            "subject": "x",
+            "from": {"emailAddress": {"address": "orders@doordash.com"}},
+            "body": {"contentType": "text", "content": ""},
+            "receivedDateTime": "2026-04-15T12:00:00Z",
+        }
+        self.assertTrue(api._message_matches_criteria(match, criteria))
 
 
 if __name__ == "__main__":
