@@ -209,35 +209,44 @@ To provide Matchy-compatible endpoints for search and move:
   - `POST /v1/messages/{message_id}/move` with `{ "folder_name": "matchy" }`
 
 ## GLOBAL ARCHITECTURE: TELLER → MATCHY ← MAILCART
-```text
-┌───────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                            SYSTEM LANDSCAPE                                           │
-│                                                                                                       │
-│  ┌────────────────────────────────┐      HTTPS (search/move)      ┌────────────────────────────────┐  │
-│  │             MATCHY             │ ────────────────────────────► │            MAILCART            │  │
-│  │                                │ ◄──────────────────────────── │                                │  │
-│  │ - FastAPI service              │        message candidates     │ - Outlook/Graph integration    │  │
-│  │ - Runs transaction↔email match │                               │ - Search endpoint for emails   │  │
-│  │ - Combines scoring + AI ranker │                               │ - Move endpoint to folder      │  │
-│  │ - Writes run/candidate/match   │                               │   `matchy`                     │  │
-│  │   records to Teller DB         │                               └────────────────────────────────┘  │
-│  └───────────────┬────────────────┘                                                                   │
-│                  │ SQL read/write                                                                     │
-│                  ▼                                                                                    │
-│  ┌──────────────────────────────────────────────────────────┐                                         │
-│  │                      TELLER DB                           │                                         │
-│  │                                                          │                                         │
-│  │ - Source transactions: `teller.transaction`              │                                         │
-│  │ - Match run table: `teller.transaction_email_match_run`  │                                         │
-│  │ - Candidates table: `teller.transaction_email_candidate` │                                         │
-│  │ - Match table: `teller.transaction_email_match`          │                                         │
-│  └──────────────────────────────────────────────────────────┘                                         │
-│                                                                                                       │
-└───────────────────────────────────────────────────────────────────────────────────────────────────────┘
 
-TRIGGER FLOW
-┌─────────────────────────────┐      POST /v1/matchy/runs       ┌────────────────────────────┐
-│ Caller (manual/auto/retry)  │───────────────────────────────► │ Matchy API                 │
-│ (operator/job in ecosystem) │                                 │ validates ids + starts run │
-└───────────────────────────√─┘                                 └────────────────────────────┘
+The cross-repo system landscape and trigger flow are canonical in the eggnest root
+[`../Architecture.md`](../Architecture.md). Mailcart's upstream message contract and search internals are below.
+
+## Upstream Message Contract
+
+Mailcart is the canonical owner of the local email search/body/move API (R035 for per-message; R020 for search).
+Consumers are matchy (`matchy/mailcart_client.py`) and classy's `/v1/matchy/*` proxy (see
+[`../classy/Architecture.md`](../classy/Architecture.md) for the UI-facing field mapping).
+
+- `GET /v1/messages/search?query=<string>&limit=<int>` — `limit` is 1–100. Returns
+  `{"messages": [{"message_id", "subject", "preview", "received_at", "sender", "body_text"}]}`.
+- `GET /v1/messages/{message_id}` — returns
+  `{"message_id", "subject", "preview", "received_at", "sender", "recipients", "html_body", "text_body", "body_text"}`.
+- `POST /v1/messages/{message_id}/move` — used by matchy with `{ "folder_name": "matchy" }`.
+
+Search responses always include a `messages` array (a legacy `items` array is accepted by consumers as a fallback).
+The Microsoft Graph token Mailcart uses internally is managed by Mailcart itself (cached at
+`~/.cache/mailcart/graph_oauth.json`, refreshed on 401).
+
+## Search Algorithm: Aho-Corasick — many filters, one pass
+
+**The idea (plain English):** A search can carry several filters at once
+(`subject:…`, `sender:…`, `body:…`). The naive approach scans each email field once *per
+filter*. **Aho-Corasick** builds a single automaton — a trie of all the filter strings plus
+"failure links" that let it never backtrack — and finds *every* matching filter in one pass
+over the text. Cost drops from O(text × patterns) to O(text + patterns).
+
+```text
+filters ["amzn", "amex", "uber"] ─► build automaton once (trie + failure links)
+
+field text  ──────────────────────► single O(n) pass ─► { matched filters }
+   naive alternative: re-scan the field once per filter  (O(n · patterns))
 ```
+
+**Where it lives:** `mailcart/scripts/matchy_mailcart_api.py` (`AhoCorasick`,
+`_build_criteria_matcher`); built once per `/v1/messages/search` request and reused across
+every scanned message. Requirement R050.
+
+**Read more:** [Aho–Corasick algorithm](https://en.wikipedia.org/wiki/Aho%E2%80%93Corasick_algorithm) ·
+[Trie](https://en.wikipedia.org/wiki/Trie)

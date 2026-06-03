@@ -7,4 +7,4 @@ RUNNER_HOME="$(cd "${SCRIPT_DIR}/../runner" && pwd)"
 export RUNBOOK_REPO_ROOT="$SCRIPT_DIR"
 # shellcheck source=/dev/null
 source "${RUNNER_HOME}/config/runbook/mailcart.env"
-exec "${RUNNER_HOME}/src/scripts/load_requirements_generic.sh" "$@"
+exec "${RUNNER_HOME}/11_run_all_tests_parallel.sh" "$@"
