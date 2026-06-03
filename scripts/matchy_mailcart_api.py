@@ -499,12 +499,12 @@ def _resolve_tls_materials() -> tuple[str, str]:
     if not cert_file.is_file():
         raise SystemExit(
             f"{TLS_CERT_ENV} is required and must point to an existing certificate file: {cert_file}. "
-            "Run ./05_install_matchy_api_tls.sh to install local TLS materials."
+            "Run ./04_install_matchy_api_tls.sh to install local TLS materials."
         )
     if not key_file.is_file():
         raise SystemExit(
             f"{TLS_KEY_ENV} is required and must point to an existing key file: {key_file}. "
-            "Run ./05_install_matchy_api_tls.sh to install local TLS materials."
+            "Run ./04_install_matchy_api_tls.sh to install local TLS materials."
         )
     return str(cert_file), str(key_file)
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bats
 
 src() {
-  printf '%s' "${BATS_TEST_DIRNAME}/../../04_run_dependency_freshness_checks.sh"
+  printf '%s' "${BATS_TEST_DIRNAME}/../../04_install_matchy_api_tls.sh"
 }
 
 @test "enables secure umask and strict shell mode" {
@@ -30,8 +30,8 @@ src() {
   [ "$status" -eq 0 ]
 }
 
-@test "delegates to mapped runner dependency-freshness golden" {
+@test "delegates to mapped runner TLS installer golden" {
   #R015-T01
-  run grep "exec \"\${RUNNER_HOME}/04_run_dependency_freshness_checks.sh\" \"\$@\"" "$(src)"
+  run grep "exec \"\${RUNNER_HOME}/05_install_matchy_api_tls.sh\" \"\$@\"" "$(src)"
   [ "$status" -eq 0 ]
 }

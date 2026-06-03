@@ -1,8 +1,8 @@
-# 05 Install Matchy API TLS Wrapper Requirements
+# 04 Install Matchy API TLS Wrapper Requirements
 
 ## Scope
 
-Applies to `05_install_matchy_api_tls.sh`.
+Applies to `04_install_matchy_api_tls.sh`.
 
 R001  Statement: Wrapper runs in strict shell mode with secure umask.
 Design: Configure `umask 007` and `set -euo pipefail` before any path resolution or delegation.

@@ -1,7 +1,7 @@
 #!/usr/bin/env bats
 
 src() {
-  printf '%s' "${BATS_TEST_DIRNAME}/../../05_install_matchy_api_tls.sh"
+  printf '%s' "${BATS_TEST_DIRNAME}/../../05_run_all_tests_parallel.sh"
 }
 
 @test "enables secure umask and strict shell mode" {
@@ -30,8 +30,8 @@ src() {
   [ "$status" -eq 0 ]
 }
 
-@test "delegates to mapped runner TLS installer golden" {
+@test "delegates to mapped runner orchestrator golden" {
   #R015-T01
-  run grep "exec \"\${RUNNER_HOME}/05_install_matchy_api_tls.sh\" \"\$@\"" "$(src)"
+  run grep "exec \"\${RUNNER_HOME}/11_run_all_tests_parallel.sh\" \"\$@\"" "$(src)"
   [ "$status" -eq 0 ]
 }

@@ -194,7 +194,7 @@ If CI is added later, use the same sequence to keep local and CI checks aligned.
   - Cause: caller is using `http://127.0.0.1:8788` against Mailcart's TLS-only endpoint.
   - Fix: switch caller base URL to `https://127.0.0.1:8788` and pass TLS verify with the local cert (`~/.mailcart/matchy-localhost-cert.pem`) or trusted mkcert CA bundle.
 - TLS startup failures for `make run-api`
-  - Run `./05_install_matchy_api_tls.sh` to generate local cert/key material.
+  - Run `./04_install_matchy_api_tls.sh` to generate local cert/key material.
   - Verify `MAILCART_MATCHY_TLS_CERT_FILE` and `MAILCART_MATCHY_TLS_KEY_FILE` point to existing files.
 - `1psa` not found
   - Re-run `./01_install_prerequisites.sh`.
@@ -203,7 +203,7 @@ If CI is added later, use the same sequence to keep local and CI checks aligned.
 
 To provide Matchy-compatible endpoints for search and move:
 
-- Install local API TLS materials first: `./05_install_matchy_api_tls.sh`
+- Install local API TLS materials first: `./04_install_matchy_api_tls.sh`
 - Run `python3 scripts/matchy_mailcart_api.py`
 - Or run `make run-api`
 - API transport is HTTPS-only on `https://127.0.0.1:8788`
