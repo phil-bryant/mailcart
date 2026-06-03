@@ -76,7 +76,7 @@ Tests:
 - R035-T02: Pass a blank message id and verify HTTP 400 is raised.
 
 R040  Statement: Start the Matchy Mailcart API over HTTPS only.
-Design: API startup resolves TLS cert/key file paths from `MAILCART_MATCHY_TLS_CERT_FILE` and `MAILCART_MATCHY_TLS_KEY_FILE` (with localhost defaults under `~/.mailcart`) and launches uvicorn with `ssl_certfile` and `ssl_keyfile`.
+Design: API startup resolves TLS cert/key file paths from `MAILCART_MATCHY_TLS_CERT_FILE` and `MAILCART_MATCHY_TLS_KEY_FILE` (with localhost defaults under `~/.mailcart`) and launches uvicorn with `ssl_certfile` and `ssl_keyfile`. Callers must target `https://127.0.0.1:8788` (never `http://`) and supply TLS verification using either `~/.mailcart/matchy-localhost-cert.pem` or a CA bundle that trusts the local mkcert root.
 Tests:
 - Mock startup dependencies and verify uvicorn receives SSL cert/key parameters.
 - Verify reuse health probes target `https://127.0.0.1:8788/health`.
@@ -103,3 +103,4 @@ Tests:
 - 2026-05-27: Added HTTPS-only startup (R040) and fail-fast TLS material validation (R045) for Matchy Mailcart API.
 - 2026-05-28: Updated R020 to strict scoped-token search contract with full-body matching, normalization, inclusive dates, AND semantics, and 400 on unsupported/unscoped tokens.
 - 2026-05-29: Updated R020 to require server-side Graph date filters and bounded pagination for date-scoped queries so older-window inbox matches are discoverable beyond the first Graph page.
+- 2026-06-03: Clarified R040 caller transport contract (HTTPS-only base URL plus TLS verify bundle requirements) to prevent HTTP/TLS mismatch disconnect loops.

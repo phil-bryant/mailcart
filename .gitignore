@@ -1,6 +1,7 @@
 .env
 .DS_Store
 .cursor/rules/*
+artifacts/
 
 # Local build artifacts and IDE caches
 #R001: Exclude local build output from version control.
