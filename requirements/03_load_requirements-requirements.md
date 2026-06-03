@@ -1,53 +1,25 @@
-# Load Requirements Requirements
+# 03 Load Requirements Wrapper Requirements
 
 ## Scope
 
 Applies to `03_load_requirements.sh`.
 
-R001  Statement: Require expected virtual environment directory to exist.
-Design: Compute `<cwd-basename>-venv` and fail if missing.
+R001  Statement: Wrapper runs in strict shell mode with secure umask.
+Design: Configure `umask 007` and `set -euo pipefail` before any path resolution or delegation.
 Tests:
-- Remove venv directory and verify clear failure with `02_create_venv.sh` guidance.
+- R001-T01: Verify wrapper source sets `umask 007` and strict shell mode.
 
-R005  Statement: Require a currently active virtual environment.
-Design: Check `VIRTUAL_ENV`; fail with activation instructions when unset.
+R005  Statement: Wrapper resolves repository root and runner root from script location.
+Design: Compute `SCRIPT_DIR` from `${BASH_SOURCE[0]}` and derive `RUNNER_HOME` from the script-relative runner path.
 Tests:
-- Run outside venv and verify non-zero exit with activation hint.
+- R005-T01: Verify wrapper source derives `SCRIPT_DIR` and `RUNNER_HOME` from script-relative paths.
 
-R010  Statement: Fail when active virtualenv Python executable is not available.
-Design: Resolve `${VIRTUAL_ENV}/bin/python` and fail clearly when not executable.
+R010  Statement: Wrapper loads mailcart runbook profile before delegation.
+Design: Export `RUNBOOK_REPO_ROOT` and source `runner/config/runbook/mailcart.env` prior to `exec`.
 Tests:
-- Set `VIRTUAL_ENV` to a directory without a `bin/python` executable and verify failure.
+- R010-T01: Verify wrapper source exports `RUNBOOK_REPO_ROOT` and sources `mailcart.env`.
 
-R015  Statement: Require active virtual environment to match expected project venv.
-Design: Resolve absolute paths and compare expected/current virtual environment roots.
+R015  Statement: Wrapper delegates execution to the mapped runner golden.
+Design: Use `exec "${RUNNER_HOME}/src/scripts/load_requirements_generic.sh" "$@"` so arguments pass through unchanged.
 Tests:
-- Activate different venv and verify mismatch warning then non-zero exit.
-
-R020  Statement: Expose a stable activation hint for local shell workflow.
-Design: Print `activate` guidance when virtual environment is not active.
-Tests:
-- Run outside venv and verify output includes `activate`.
-
-R025  Statement: Select requirements file by deterministic precedence.
-Design: Use `requirements.txt` when present; otherwise use cpu/gpu split flow.
-Tests:
-- With `requirements.txt` present, verify split-file argument is not required.
-- Without `requirements.txt`, verify split-file detection engages.
-
-R030  Statement: Validate cpu/gpu selector when split requirements files are used.
-Design: Require exactly one parameter and allow only `cpu` or `gpu`.
-Tests:
-- Run with missing selector and verify usage failure.
-- Run with invalid selector and verify usage failure.
-
-R035  Statement: Install dependencies through active virtualenv python.
-Design: Use `${VIRTUAL_ENV}/bin/python -m pip install --upgrade pip` and `${VIRTUAL_ENV}/bin/python -m pip install -r <selected-file>`.
-Tests:
-- Verify pip upgrade runs before requirements install through the venv python executable.
-- Verify selected requirements file is passed to pip install.
-
-## Changelog
-
-- 2026-04-19: Initial reverse-engineered requirements for `03_load_requirements.sh`.
-- 2026-05-12: Reswizzled from Teller lock-policy flow to mailcart active-venv install flow.
+- R015-T01: Verify wrapper source delegates to `src/scripts/load_requirements_generic.sh` with `"$@"`.

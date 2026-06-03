@@ -1,8 +1,8 @@
-# 05 Install Matchy API TLS Wrapper Requirements
+# 11 Run All Tests Parallel Wrapper Requirements
 
 ## Scope
 
-Applies to `05_install_matchy_api_tls.sh`.
+Applies to `11_run_all_tests_parallel.sh`.
 
 R001  Statement: Wrapper runs in strict shell mode with secure umask.
 Design: Configure `umask 007` and `set -euo pipefail` before any path resolution or delegation.
@@ -20,6 +20,6 @@ Tests:
 - R010-T01: Verify wrapper source exports `RUNBOOK_REPO_ROOT` and sources `mailcart.env`.
 
 R015  Statement: Wrapper delegates execution to the mapped runner golden.
-Design: Use `exec "${RUNNER_HOME}/05_install_matchy_api_tls.sh" "$@"` so arguments pass through unchanged.
+Design: Use `exec "${RUNNER_HOME}/11_run_all_tests_parallel.sh" "$@"` so arguments pass through unchanged.
 Tests:
-- R015-T01: Verify wrapper source delegates to `05_install_matchy_api_tls.sh` with `"$@"`.
+- R015-T01: Verify wrapper source delegates to `11_run_all_tests_parallel.sh` with `"$@"`.
