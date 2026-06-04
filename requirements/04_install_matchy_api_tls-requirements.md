@@ -20,6 +20,6 @@ Tests:
 - R010-T01: Verify wrapper source exports `RUNBOOK_REPO_ROOT` and sources `mailcart.env`.
 
 R015  Statement: Wrapper delegates execution to the mapped runner golden.
-Design: Use `exec "${RUNNER_HOME}/05_install_matchy_api_tls.sh" "$@"` so arguments pass through unchanged.
+Design: Use `exec "${RUNNER_HOME}/src/scripts/install_api_tls_generic.sh" "$@"` so arguments pass through unchanged.
 Tests:
-- R015-T01: Verify wrapper source delegates to `05_install_matchy_api_tls.sh` with `"$@"`.
+- R015-T01: Verify wrapper source delegates to `src/scripts/install_api_tls_generic.sh` with `"$@"`.

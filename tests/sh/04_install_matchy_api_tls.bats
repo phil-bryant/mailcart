@@ -32,6 +32,6 @@ src() {
 
 @test "delegates to mapped runner TLS installer golden" {
   #R015-T01
-  run grep "exec \"\${RUNNER_HOME}/05_install_matchy_api_tls.sh\" \"\$@\"" "$(src)"
+  run grep "exec \"\${RUNNER_HOME}/src/scripts/install_api_tls_generic.sh\" \"\$@\"" "$(src)"
   [ "$status" -eq 0 ]
 }
