@@ -10,5 +10,5 @@ RUNNER_HOME="$(cd "${SCRIPT_DIR}/../runner" && pwd)"
 export RUNBOOK_REPO_ROOT="$SCRIPT_DIR"
 # shellcheck source=/dev/null
 source "${RUNNER_HOME}/config/runbook/mailcart.env"
-#R015: Wrapper delegates to the runner golden TLS installer entrypoint.
-exec "${RUNNER_HOME}/05_install_matchy_api_tls.sh" "$@"
+#R015: Wrapper delegates to the generic runner golden TLS installer entrypoint.
+exec "${RUNNER_HOME}/src/scripts/install_api_tls_generic.sh" "$@"
