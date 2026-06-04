@@ -11,6 +11,7 @@
 
 from __future__ import annotations
 
+from itertools import product
 import tempfile
 import sys
 import unittest
@@ -192,6 +193,21 @@ class SearchMessagesTests(unittest.TestCase):
             api.search_messages(query="foo:bar", limit=10)
         self.assertEqual(getattr(unsupported_ctx.exception, "status_code", None), 400)
 
+    def test_empty_query_returns_recent_mail(self) -> None:
+        rows = [
+            self._mk_message("newest", subject="Newest", received_at="2026-06-02T12:00:00Z"),
+            self._mk_message("middle", subject="Middle", received_at="2026-06-01T12:00:00Z"),
+            self._mk_message("older", subject="Older", received_at="2026-05-31T12:00:00Z"),
+        ]
+        with mock.patch.object(api, "_graph_get", return_value={"value": rows}) as graph_get:
+            result = api.search_messages(query="   ", limit=2)
+        _, kwargs = graph_get.call_args
+        params = kwargs.get("params", {})
+        self.assertEqual(params.get("$orderby"), "receivedDateTime DESC")
+        self.assertEqual(params.get("$top"), "50")
+        self.assertNotIn("$filter", params)
+        self.assertEqual([msg["message_id"] for msg in result["messages"]], ["newest", "middle"])
+
     def test_search_paginates_for_older_date_windows(self) -> None:
         #R020-T01
         page_one = [self._mk_message("newer", received_at="2026-05-27T10:00:00Z")]
@@ -273,6 +289,30 @@ class GetMessageRoutingTests(unittest.TestCase):
         #R035-T01
         paths = {getattr(route, "path", None) for route in api.app.routes}
         self.assertIn("/v1/messages/{message_id}", paths)
+
+
+class EndpointAuthContractTests(unittest.TestCase):
+    def _route_for(self, path: str, method: str):
+        for route in api.app.routes:
+            if getattr(route, "path", None) != path:
+                continue
+            methods = getattr(route, "methods", set()) or set()
+            if method in methods:
+                return route
+        self.fail(f"missing route: {method} {path}")
+
+    def test_search_get_move_routes_have_no_auth_dependencies(self) -> None:
+        for path, method in [
+            ("/v1/messages/search", "GET"),
+            ("/v1/messages/{message_id}", "GET"),
+            ("/v1/messages/{message_id}/move", "POST"),
+        ]:
+            with self.subTest(path=path, method=method):
+                route = self._route_for(path, method)
+                dependant = getattr(route, "dependant", None)
+                self.assertIsNotNone(dependant)
+                self.assertEqual(getattr(dependant, "dependencies", []), [])
+                self.assertEqual(getattr(dependant, "security_requirements", []), [])
 
 
 class GraphRequestAuthTests(unittest.TestCase):
@@ -519,6 +559,23 @@ class AhoCorasickTests(unittest.TestCase):
             "receivedDateTime": "2026-04-15T12:00:00Z",
         }
         self.assertTrue(api._message_matches_criteria(match, criteria))
+
+    def test_search_matches_naive_substring_scan_across_corpus(self) -> None:
+        #R050-T01
+        pattern_sets = [
+            ["a", "ab", "bab", "bc", "bca", "c", "caa"],
+            ["he", "she", "his", "hers"],
+            ["aa", "aaa", "aaaa", "baaa"],
+            ["abc", "bcd", "cde", "de"],
+        ]
+        for patterns in pattern_sets:
+            matcher = api.AhoCorasick(patterns)
+            for length in range(6):
+                for chars in product("abcde", repeat=length):
+                    text = "".join(chars)
+                    expected = {pattern for pattern in patterns if pattern and pattern in text}
+                    with self.subTest(patterns=tuple(patterns), text=text):
+                        self.assertEqual(matcher.search(text), expected)
 
 
 if __name__ == "__main__":

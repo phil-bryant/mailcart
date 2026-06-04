@@ -11,6 +11,7 @@ from __future__ import annotations
 from collections import deque
 from datetime import date, datetime
 from html import unescape
+import logging
 import os
 import re
 import socket
@@ -30,6 +31,7 @@ from graph_token import GraphTokenError, get_manager  # noqa: E402
 
 
 GRAPH_BASE = "https://graph.microsoft.com/v1.0"
+LOGGER = logging.getLogger(__name__)
 _TOKEN_MANAGER = get_manager()
 API_HOST = "127.0.0.1"
 API_PORT = 8788
@@ -60,7 +62,8 @@ def _headers() -> dict[str, str]:
     try:
         token = _TOKEN_MANAGER.get_access_token()
     except GraphTokenError as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        LOGGER.exception("Failed to resolve Graph access token for request headers.")
+        raise HTTPException(status_code=500, detail="Graph access token is unavailable.") from exc
     return {
         "Authorization": f"Bearer {token}",
         "Accept": "application/json",
@@ -83,7 +86,8 @@ def _graph_request(method: str, path: str, *, params: dict[str, Any] | None = No
             try:
                 _TOKEN_MANAGER.refresh(force=True)
             except GraphTokenError as exc:
-                raise HTTPException(status_code=502, detail=f"Graph auth failed and token refresh failed: {exc}") from exc
+                LOGGER.exception("Graph token refresh failed after authentication failure.")
+                raise HTTPException(status_code=502, detail="Graph authentication failed: token refresh failed.") from exc
             continue
         detail = f"Graph {method} failed: {response.status_code} {response.text[:200]}"
         if _is_auth_failure(response.status_code, response.text):
@@ -279,8 +283,6 @@ class AhoCorasick:
                 while fail_node != 0 and char not in self._goto[fail_node]:
                     fail_node = self._fail[fail_node]
                 target = self._goto[fail_node].get(char, 0)
-                if target == next_node:
-                    target = 0
                 self._fail[next_node] = target
                 self._output[next_node] = self._output[next_node] | self._output[target]
 
@@ -361,6 +363,8 @@ class MoveRequest(BaseModel):
     folder_name: str = Field(default="matchy", min_length=1, max_length=120)
 
 
+# Intentionally no caller-facing auth dependency. All mailbox access is performed
+# with the process-wide shared Graph token managed by `_TOKEN_MANAGER`.
 app = FastAPI(title="mailcart-matchy-api")
 
 
@@ -373,7 +377,7 @@ def health() -> dict[str, str]:
 
 
 @app.get("/v1/messages/search")
-#R020: Return recent messages and apply optional text filtering with caller limit.
+#R020: Return recent messages for empty query; otherwise apply scoped filtering with caller limit.
 def search_messages(query: str = Query(default="", max_length=400), limit: int = Query(default=50, ge=1, le=100)) -> dict[str, Any]:
     criteria = _parse_scoped_query(query)
     normalized_query = query.strip()
