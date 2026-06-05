@@ -8,5 +8,10 @@ RUNBOOK_REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd -P)"
 export RUNBOOK_REPO_ROOT
 # shellcheck source=/dev/null
 source "${RUNNER_HOME}/config/runbook/mailcart.env"
+# shellcheck source=/dev/null
+source "${RUNBOOK_REPO_ROOT}/scripts/macos_build_lock.sh"
 cd "$RUNBOOK_REPO_ROOT"
+# Serialize the Xcode build so parallel macOS lanes don't race on the shared project; once the
+# bundle is built, `make crash` re-checks _ui-build (fresh -> no rebuild) and runs verification.
+with_macos_build_lock make _ui-build
 exec make crash
