@@ -1,11 +1,8 @@
 #import "OutlookBridgeModels.h"
 
-// #R050: Keep Bridge DTO implementation layer aligned with blocking clang-tidy policy ownership in OutlookClientBridge helpers.
 @implementation OutlookMailcartSummaryDTO
 
-// #R005: Materialize immutable summary DTO values.
-// #R030: Persist summary-only id/subject/preview payload fields.
-// #R045: Convert bridge summary output into Objective-C DTO instances.
+// #R005: Materialize immutable summary DTO values through the designated initializer.
 - (instancetype)initWithMessageId:(NSString *)messageId
                           subject:(NSString *)subject
                           preview:(NSString *)preview
@@ -64,13 +61,7 @@
 
 @implementation OutlookMailcartDTO
 
-// #R001: Materialize full-mailcart DTO read payload for bridge API.
-// #R010: Preserve Foundation/C++ string conversion boundaries in DTO storage.
-// #R015: Retain deterministic fixture-derived field mappings.
-// #R020: Preserve case-insensitive search/read selected values.
-// #R025: Preserve limit-filtered/search-selected payload values.
-// #R035: Support unknown-id fallback values through empty-field DTO state.
-// #R040: Support bridge-owned lifecycle object transfer into UI.
+// #R005: Materialize immutable full-mailcart DTO values through the designated initializer.
 - (instancetype)initWithMessageId:(NSString *)messageId
                            sender:(NSString *)sender
                         recipient:(NSString *)recipient

@@ -3,23 +3,18 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-// #R050: Keep public bridge surface aligned with blocking clang-tidy policy ownership in OutlookClientBridge helpers.
 // #R001: Expose Objective-C bridge operations for search and read.
-// #R015: Bind client operations to gateway/parser-backed bridge behavior.
 // #R040: Own and expose bridge lifecycle around C++ client dependencies.
 @interface OutlookClientBridge : NSObject
 
-// #R020: Support case-insensitive query behavior through search entrypoint.
-// #R025: Accept bounded/non-negative limit semantics for search.
-// #R030: Return summary-field-oriented search payloads.
+// #R001: Expose Objective-C bridge search entrypoint backed by the C++ client.
 // #R045: Return Objective-C DTO summaries for Swift UI consumption.
 - (OutlookSearchResultDTO *)searchMailcartsWithQuery:(NSString *)query
                                             limit:(NSInteger)limit
                                            cursor:(NSString *)cursor;
 
-// #R005: Return immutable DTO model instances.
-// #R010: Normalize Foundation/C++ string bridging on read path.
-// #R035: Resolve message reads by id with unknown-id fallback behavior.
+// #R001: Expose Objective-C bridge read entrypoint backed by the C++ client.
+// #R045: Return an immutable Objective-C full-mailcart DTO for Swift UI consumption.
 - (OutlookMailcartDTO *)readMailcartWithMessageId:(NSString *)messageId;
 
 - (BOOL)openAttachmentWithMessageId:(NSString *)messageId

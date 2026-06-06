@@ -2,9 +2,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-// #R050: Keep Bridge DTO declarations aligned with blocking clang-tidy policy ownership in OutlookClientBridge helpers.
-// #R005: Define immutable Objective-C DTO model contracts.
-// #R030: Provide summary-only DTO shape for search results.
+// #R005: Define immutable Objective-C DTO model contracts for summary payloads.
 @interface OutlookMailcartSummaryDTO : NSObject
 
 @property(nonatomic, copy, readonly) NSString *messageId;
@@ -12,7 +10,6 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, copy, readonly) NSString *preview;
 @property(nonatomic, copy, readonly) NSString *receivedAt;
 
-// #R045: Support bridge-to-UI DTO conversion through designated initializer.
 - (instancetype)initWithMessageId:(NSString *)messageId
                           subject:(NSString *)subject
                           preview:(NSString *)preview
@@ -52,8 +49,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @end
 
-// #R001: Define bridge-visible full-mailcart DTO contract.
-// #R035: Include read-by-id fields required for unknown-id fallback payloads.
+// #R005: Define immutable Objective-C DTO model contract for full-mailcart payloads.
 @interface OutlookMailcartDTO : NSObject
 
 @property(nonatomic, copy, readonly) NSString *messageId;
@@ -66,11 +62,6 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, copy, readonly) NSString *bodyHtml;
 @property(nonatomic, copy, readonly) NSArray<OutlookAttachmentDTO *> *attachments;
 
-// #R010: Preserve normalized string transport between bridge layers.
-// #R015: Keep deterministic fixture field surface for parser-backed payloads.
-// #R020: Carry case-insensitive search-matched fields into UI layer.
-// #R025: Carry limit-trimmed payload records into DTOs.
-// #R040: Align with bridge-owned client lifecycle object model.
 - (instancetype)initWithMessageId:(NSString *)messageId
                            sender:(NSString *)sender
                         recipient:(NSString *)recipient

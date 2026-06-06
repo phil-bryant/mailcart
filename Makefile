@@ -334,9 +334,16 @@ _ui-xcuitests:
 #R010: Compile bridge translation units into local object files.
 _bridge-check:
 	@mkdir -p ".build"
-	@xcrun --sdk macosx clang++ -std=c++17 -fobjc-arc -x objective-c++ \
-		-c "macos_app/Bridge/OutlookClientBridge.mm" \
-		-I"cpp_core/include" -I"macos_app/Bridge" -o ".build/OutlookClientBridge.o"
+	@for BRIDGE_TU in \
+		OutlookGraphConversions \
+		OutlookGraphHttpClient \
+		OutlookGraphMessageMover \
+		OutlookBridgeParser \
+		OutlookClientBridge; do \
+		xcrun --sdk macosx clang++ -std=c++17 -fobjc-arc -x objective-c++ \
+			-c "macos_app/Bridge/$$BRIDGE_TU.mm" \
+			-I"cpp_core/include" -I"macos_app/Bridge" -o ".build/$$BRIDGE_TU.o" || exit 1; \
+	done
 	@xcrun --sdk macosx clang -fobjc-arc -x objective-c \
 		-c "macos_app/Bridge/OutlookBridgeModels.m" \
 		-I"macos_app/Bridge" -o ".build/OutlookBridgeModels.o"
@@ -373,6 +380,14 @@ _ui-build:
 			macos_app/UI/OutlookMailViewModel.swift \
 			macos_app/Bridge/OutlookClientBridge.h \
 			macos_app/Bridge/OutlookClientBridge.mm \
+			macos_app/Bridge/OutlookGraphConversions.h \
+			macos_app/Bridge/OutlookGraphConversions.mm \
+			macos_app/Bridge/OutlookGraphHttpClient.h \
+			macos_app/Bridge/OutlookGraphHttpClient.mm \
+			macos_app/Bridge/OutlookGraphMessageMover.h \
+			macos_app/Bridge/OutlookGraphMessageMover.mm \
+			macos_app/Bridge/OutlookBridgeParser.h \
+			macos_app/Bridge/OutlookBridgeParser.mm \
 			macos_app/Bridge/OutlookBridgeModels.h \
 			macos_app/Bridge/OutlookBridgeModels.m \
 			macos_app/OutlookMail-Bridging-Header.h \
@@ -521,6 +536,10 @@ _sast_clang_tidy:
 		-- -std=c++17 -isysroot "$$MACOS_SDK_PATH" -stdlib=libc++ -I"cpp_core/include" 2>&1 | tee -a "$$CLANG_TIDY_LOG"; \
 	xcrun --sdk macosx "$$CLANG_TIDY_BIN" \
 		$$CLANG_TIDY_COMMON_FLAGS \
+		"macos_app/Bridge/OutlookGraphConversions.mm" \
+		"macos_app/Bridge/OutlookGraphHttpClient.mm" \
+		"macos_app/Bridge/OutlookGraphMessageMover.mm" \
+		"macos_app/Bridge/OutlookBridgeParser.mm" \
 		"macos_app/Bridge/OutlookClientBridge.mm" \
 		-- -std=c++17 -isysroot "$$MACOS_SDK_PATH" -fobjc-arc -x objective-c++ -I"cpp_core/include" -I"macos_app/Bridge" 2>&1 | tee -a "$$CLANG_TIDY_LOG"; \
 	xcrun --sdk macosx "$$CLANG_TIDY_BIN" \
