@@ -1,7 +1,10 @@
 #!/usr/bin/env bats
 
+load helpers/repo_root
+
 setup() {
-  export REPO_ROOT="/Users/phil/local/src/mailcart"
+  REPO_ROOT="$(mailcart_repo_root)"
+  export REPO_ROOT
   export MAKEFILE_PATH="${REPO_ROOT}/Makefile"
   export TLS_INSTALLER_PATH="${REPO_ROOT}/04_install_matchy_api_tls.sh"
   export SWIFTLINT_CONFIG_PATH="${REPO_ROOT}/.swiftlint.yml"

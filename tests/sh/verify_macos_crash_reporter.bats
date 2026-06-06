@@ -1,7 +1,10 @@
 #!/usr/bin/env bats
 
+load helpers/repo_root
+
 setup() {
-  export REPO_ROOT="/Users/phil/local/src/mailcart"
+  REPO_ROOT="$(mailcart_repo_root)"
+  export REPO_ROOT
   export SCRIPT_PATH="${REPO_ROOT}/scripts/verify_macos_crash_reporter.sh"
   export TMP_ROOT
   TMP_ROOT="$(mktemp -d)"
