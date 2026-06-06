@@ -6,5 +6,9 @@
 RUNBOOK_PROFILE="mailcart"
 # shellcheck source=/dev/null
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../runner/src/scripts" && pwd -P)/pointer_shim.sh"
+select_runbook_profile "${RUNBOOK_PROFILE}"
+export TRACEABILITY_REQUIREMENTS_ROOTS="${RUNBOOK_REPO_ROOT}/requirements"
+export TRACEABILITY_TEST_ROOTS="${RUNBOOK_REPO_ROOT}/tests/sh"
+export SHELL_BATS_ROOTS="${RUNBOOK_REPO_ROOT}/tests/sh"
 #R015: Delegate to the mapped runner golden with argument passthrough.
 delegate_golden "tests/t05_run_shell_unit_tests.sh" "$@"
