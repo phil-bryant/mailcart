@@ -1,6 +1,7 @@
 import XCTest
 
-// #R001: MailcartUITests declares the end-to-end mailbox regression suite that launches the packaged app in fixture mode.
+// #R001: MailcartUITests declares the end-to-end mailbox regression suite
+// that launches the packaged app in fixture mode.
 final class MailcartUITests: XCTestCase {
     private var app: XCUIApplication!
     private let timeout: TimeInterval = 5
