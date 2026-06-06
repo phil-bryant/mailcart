@@ -1,3 +1,14 @@
+[tool.coverage.run]
+branch = true
+relative_files = true
+source = ["scripts"]
+data_file = "artifacts/coverage/.coverage"
+
+[tool.coverage.report]
+show_missing = true
+omit = ["tests/*"]
+precision = 2
+
 [tool.mutmut]
 paths_to_mutate = [
   "scripts/matchy_mailcart_api.py",

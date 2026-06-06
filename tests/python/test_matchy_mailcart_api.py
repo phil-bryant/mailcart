@@ -340,6 +340,111 @@ class GraphRequestAuthTests(unittest.TestCase):
         invalidate_mock.assert_called_once()
         refresh_mock.assert_called_once_with(force=True)
 
+    def test_graph_request_returns_empty_dict_for_no_content(self) -> None:
+        #R030-T01: successful Graph responses with empty text yield {}.
+        response = mock.Mock(status_code=204, text="")
+        with (
+            mock.patch.object(api, "_headers", return_value={"Authorization": "Bearer t"}),
+            mock.patch.object(api.requests, "request", return_value=response),
+        ):
+            result = api._graph_request("GET", "/me/messages/msg_4")
+        self.assertEqual(result, {})
+
+    def test_graph_request_maps_not_found_variants_to_404(self) -> None:
+        #R030-T01: Graph ItemNotFound/ResourceNotFound errors are mapped to HTTP 404.
+        for status_code, body in [
+            (404, "ItemNotFound"),
+            (400, "ResourceNotFound"),
+        ]:
+            with self.subTest(status_code=status_code, body=body):
+                response = mock.Mock(status_code=status_code, text=body)
+                with (
+                    mock.patch.object(api, "_headers", return_value={"Authorization": "Bearer t"}),
+                    mock.patch.object(api.requests, "request", return_value=response),
+                ):
+                    with self.assertRaises(Exception) as ctx:
+                        api._graph_request("GET", "/me/messages/msg_5")
+                self.assertEqual(getattr(ctx.exception, "status_code", None), 404)
+
+
+class GraphHelpersTests(unittest.TestCase):
+    def test_is_auth_failure_matches_status_and_known_markers(self) -> None:
+        #R600-T01: auth failure detector handles status 401 and known body markers.
+        self.assertTrue(api._is_auth_failure(401, "anything"))
+        self.assertTrue(api._is_auth_failure(500, "InvalidAuthenticationToken"))
+        self.assertTrue(api._is_auth_failure(500, "authorization_identity_not_found"))
+        self.assertTrue(api._is_auth_failure(500, "graph auth failed"))
+        self.assertFalse(api._is_auth_failure(500, "plain server error"))
+
+    def test_headers_raise_http_500_when_token_manager_fails(self) -> None:
+        #R015-T01: header construction surfaces token-manager failures as HTTP 500.
+        with mock.patch.object(api._TOKEN_MANAGER, "get_access_token", side_effect=api.GraphTokenError("missing")):
+            with self.assertRaises(Exception) as ctx:
+                api._headers()
+        self.assertEqual(getattr(ctx.exception, "status_code", None), 500)
+
+    def test_graph_get_next_link_rejects_unexpected_host(self) -> None:
+        #R020-T01: pagination next-link host must match Graph host.
+        with self.assertRaises(Exception) as ctx:
+            api._graph_get_next_link("https://evil.example.com/v1.0/me/messages?$top=10")
+        self.assertEqual(getattr(ctx.exception, "status_code", None), 502)
+
+    def test_graph_get_next_link_strips_graph_base_path_and_forwards_params(self) -> None:
+        #R020-T01: pagination helper strips base path and forwards parsed query params.
+        next_link = "https://graph.microsoft.com/v1.0/me/messages?$top=10&$skiptoken=abc"
+        with mock.patch.object(api, "_graph_get", return_value={"value": []}) as graph_get:
+            api._graph_get_next_link(next_link)
+        graph_get.assert_called_once_with("/me/messages", params={"$top": "10", "$skiptoken": "abc"})
+
+    def test_parse_received_at_date_handles_blank_and_invalid(self) -> None:
+        #R610-T01: receivedDateTime parser returns None for blank/invalid inputs.
+        self.assertIsNone(api._parse_received_at_date(""))
+        self.assertIsNone(api._parse_received_at_date("not-a-date"))
+        self.assertIsNotNone(api._parse_received_at_date("2026-05-01T01:02:03Z"))
+
+    def test_existing_server_health_helpers_handle_exceptions(self) -> None:
+        #R040-T01: health probes return False on request exceptions.
+        with mock.patch.object(api.requests, "get", side_effect=RuntimeError("boom")):
+            self.assertFalse(api._existing_server_is_healthy("/tmp/cert.pem"))
+            self.assertFalse(api._existing_http_server_is_healthy())
+
+
+class RunServerEdgeCasesTests(unittest.TestCase):
+    def test_run_server_exits_one_when_initial_token_resolution_fails(self) -> None:
+        #R040-T01: startup exits non-zero when eager token resolution fails.
+        with (
+            mock.patch.dict(api.os.environ, {"OUTLOOK_GRAPH_CLIENT_ID": "cid"}, clear=False),
+            mock.patch.object(api._TOKEN_MANAGER, "get_access_token", side_effect=api.GraphTokenError("bad token")),
+        ):
+            with self.assertRaises(SystemExit) as ctx:
+                api.run_server()
+        self.assertEqual(ctx.exception.code, 1)
+
+    def test_run_server_reports_generic_port_conflict(self) -> None:
+        #R040-T01: startup reports generic conflict when port is occupied by unknown process.
+        with tempfile.TemporaryDirectory() as temp_dir:
+            cert_path = Path(temp_dir) / "cert.pem"
+            key_path = Path(temp_dir) / "key.pem"
+            cert_path.write_text("cert", encoding="utf-8")
+            key_path.write_text("key", encoding="utf-8")
+            with (
+                mock.patch.dict(
+                    api.os.environ,
+                    {
+                        "OUTLOOK_GRAPH_CLIENT_ID": "",
+                        api.TLS_CERT_ENV: str(cert_path),
+                        api.TLS_KEY_ENV: str(key_path),
+                    },
+                    clear=False,
+                ),
+                mock.patch.object(api, "_is_port_in_use", return_value=True),
+                mock.patch.object(api, "_existing_server_is_healthy", return_value=False),
+                mock.patch.object(api, "_existing_http_server_is_healthy", return_value=False),
+            ):
+                with self.assertRaises(SystemExit) as ctx:
+                    api.run_server()
+        self.assertIn("already in use by another process", str(ctx.exception))
+
     def test_graph_request_returns_502_when_refresh_fails_after_401(self) -> None:
         #R027-T01: 401 with failed refresh surfaces HTTP 502.
         response = mock.Mock(status_code=401, text="InvalidAuthenticationToken")
