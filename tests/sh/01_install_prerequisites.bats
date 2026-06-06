@@ -1,6 +1,7 @@
 #!/usr/bin/env bats
 
 src() {
+  #R001: Test harness setup for 01_install_prerequisites contract checks.
   printf '%s' "${BATS_TEST_DIRNAME}/../../01_install_prerequisites.sh"
 }
 

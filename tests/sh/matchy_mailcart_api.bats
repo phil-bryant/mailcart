@@ -11,6 +11,7 @@
 load helpers/repo_root
 
 setup() {
+  #R001: Test harness setup for matchy_mailcart_api contract checks.
   REPO_ROOT="$(mailcart_repo_root)"
   API="${REPO_ROOT}/scripts/matchy_mailcart_api.py"
   TOKENS="${REPO_ROOT}/scripts/graph_token.py"
@@ -149,5 +150,39 @@ setup() {
   run rg -F "def _build_failure_links(self) -> None:" "${API}"
   [ "$status" -eq 0 ]
   run rg -F "def _build_criteria_matcher(" "${API}"
+  [ "$status" -eq 0 ]
+}
+
+@test "R600: _is_auth_failure flags 401 and known invalid-token bodies" {
+  #R600-T01: _is_auth_failure returns true for 401 and known Graph auth error bodies.
+  run rg -F "def _is_auth_failure(status_code: int, body: str) -> bool:" "${API}"
+  [ "$status" -eq 0 ]
+  run rg -F "if status_code == 401:" "${API}"
+  [ "$status" -eq 0 ]
+  run rg -F '"invalidauthenticationtoken" in lowered' "${API}"
+  [ "$status" -eq 0 ]
+}
+
+@test "R605: _graph_post issues a POST through _graph_request" {
+  #R605-T01: _graph_post delegates to _graph_request with POST and payload.
+  run rg -F "def _graph_post(path: str, payload: dict[str, Any]) -> dict[str, Any]:" "${API}"
+  [ "$status" -eq 0 ]
+  run rg -F 'return _graph_request("POST", path, payload=payload)' "${API}"
+  [ "$status" -eq 0 ]
+}
+
+@test "R610: _parse_received_at_date parses ISO/Z values leniently" {
+  #R610-T01: _parse_received_at_date normalizes trailing Z and returns None on parse failure.
+  run rg -F "def _parse_received_at_date(value: str) -> date | None:" "${API}"
+  [ "$status" -eq 0 ]
+  run rg -F 'datetime.fromisoformat(value.replace("Z", "+00:00")).date()' "${API}"
+  [ "$status" -eq 0 ]
+}
+
+@test "R615: _is_port_in_use probes via short-timeout TCP connect" {
+  #R615-T01: _is_port_in_use reports true only when connect_ex succeeds.
+  run rg -F "def _is_port_in_use(host: str, port: int) -> bool:" "${API}"
+  [ "$status" -eq 0 ]
+  run rg -F "sock.connect_ex((host, port)) == 0" "${API}"
   [ "$status" -eq 0 ]
 }

@@ -7,6 +7,7 @@
 load helpers/repo_root
 
 setup() {
+  #R001: Test harness setup for t12_run_macos_ui_regression_tests contract checks.
   REPO_ROOT="$(mailcart_repo_root)"
   SRC="${REPO_ROOT}/tests/t12_run_macos_ui_regression_tests.sh"
 }

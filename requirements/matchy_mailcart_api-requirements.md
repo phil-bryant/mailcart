@@ -79,6 +79,26 @@ Design: `AhoCorasick` builds a keyword trie with breadth-first failure links ove
 Tests:
 - R050-T01: Scoped text filters match via a single-pass Aho-Corasick automaton.
 
+R600  Statement: Classify Graph HTTP responses as authentication failures for retry/refresh handling.
+Design: `_is_auth_failure(status_code, body)` returns true for HTTP 401 and known auth-error signatures (`invalidauthenticationtoken`, `authorization_identity_not_found`, `graph auth failed`, or `: 401 `), case-insensitively.
+Tests:
+- R600-T01: `_is_auth_failure` flags 401 and known invalid-token bodies, not generic errors.
+
+R605  Statement: Issue Graph POST requests through the shared authenticated retry pipeline.
+Design: `_graph_post(path, payload)` delegates to `_graph_request("POST", path, payload=payload)` so POST calls inherit token refresh and Graph error mapping behavior.
+Tests:
+- R605-T01: `_graph_post` calls `_graph_request` with method POST and the payload.
+
+R610  Statement: Parse message `receivedDateTime` values leniently for date filtering.
+Design: `_parse_received_at_date(value)` returns `None` for empty input, normalizes trailing `Z` to `+00:00`, parses via `datetime.fromisoformat`, and returns `.date()`; malformed values return `None`.
+Tests:
+- R610-T01: `_parse_received_at_date` parses ISO/Z dates and returns `None` on blank or malformed input.
+
+R615  Statement: Detect whether the API port is already bound before startup.
+Design: `_is_port_in_use(host, port)` opens a TCP socket with a short timeout and reports true iff `connect_ex` succeeds, then closes the socket.
+Tests:
+- R615-T01: `_is_port_in_use` probes the port via a short-timeout TCP connect.
+
 ## Changelog
 
 - 2026-05-12: Added script-scoped Matchy API requirements for `scripts/matchy_mailcart_api.py`.
@@ -89,3 +109,4 @@ Tests:
 - 2026-05-29: Updated R020 to require server-side Graph date filters and bounded pagination for date-scoped queries so older-window inbox matches are discoverable beyond the first Graph page.
 - 2026-06-03: Clarified R040 caller transport contract (HTTPS-only base URL plus TLS verify bundle requirements) to prevent HTTP/TLS mismatch disconnect loops.
 - 2026-06-06: Converted all `Tests:` bullets to numbered `RNNN-Tnn` form for full strict traceability.
+- 2026-06-06: Added source-helper requirements R600/R605/R610/R615 for auth classification, POST delegation, date parsing, and port-availability probing.

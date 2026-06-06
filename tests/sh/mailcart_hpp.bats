@@ -7,6 +7,7 @@
 load helpers/repo_root
 
 setup() {
+  #R001: Test harness setup for mailcart_hpp contract checks.
   REPO_ROOT="$(mailcart_repo_root)"
   HDR="${REPO_ROOT}/cpp_core/include/mailcart.hpp"
 }

@@ -7,6 +7,7 @@
 load helpers/repo_root
 
 setup() {
+  #R001: Test harness setup for t11_run_dynamic_security_tests contract checks.
   REPO_ROOT="$(mailcart_repo_root)"
   SRC="${REPO_ROOT}/tests/t11_run_dynamic_security_tests.sh"
 }

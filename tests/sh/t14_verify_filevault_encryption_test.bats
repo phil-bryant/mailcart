@@ -7,6 +7,7 @@
 load helpers/repo_root
 
 setup() {
+  #R001: Test harness setup for t14_verify_filevault_encryption_test contract checks.
   REPO_ROOT="$(mailcart_repo_root)"
   SRC="${REPO_ROOT}/tests/t14_verify_filevault_encryption_test.sh"
 }

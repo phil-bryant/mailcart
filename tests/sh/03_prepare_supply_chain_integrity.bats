@@ -1,6 +1,7 @@
 #!/usr/bin/env bats
 
 src() {
+  #R001: Test harness setup for 03_prepare_supply_chain_integrity contract checks.
   printf '%s' "${BATS_TEST_DIRNAME}/../../03_prepare_supply_chain_integrity.sh"
 }
 

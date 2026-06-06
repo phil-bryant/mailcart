@@ -1,6 +1,7 @@
 #!/usr/bin/env bats
 
 src() {
+  #R001: Test harness setup for 02_create_venv contract checks.
   printf '%s' "${BATS_TEST_DIRNAME}/../../02_create_venv.sh"
 }
 

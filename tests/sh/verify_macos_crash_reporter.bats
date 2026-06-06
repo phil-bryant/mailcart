@@ -3,6 +3,7 @@
 load helpers/repo_root
 
 setup() {
+  #R001: Crash-verify harness setup for script contract checks.
   REPO_ROOT="$(mailcart_repo_root)"
   export REPO_ROOT
   export SCRIPT_PATH="${REPO_ROOT}/scripts/verify_macos_crash_reporter.sh"
@@ -16,10 +17,12 @@ setup() {
 }
 
 teardown() {
+  #R001: Crash-verify harness teardown for script contract checks.
   rm -rf "${TMP_ROOT}"
 }
 
 create_make_success_stub() {
+  #R001: Crash-verify harness helper for a successful make stub.
   cat > "${STUB_BIN}/make" <<'EOF'
 #!/bin/bash
 printf "make %s\n" "$*" >> "${MAKE_LOG}"
@@ -29,6 +32,7 @@ EOF
 }
 
 create_make_failure_stub() {
+  #R001: Crash-verify harness helper for a failing make stub.
   cat > "${STUB_BIN}/make" <<'EOF'
 #!/bin/bash
 printf "make %s\n" "$*" >> "${MAKE_LOG}"
@@ -38,6 +42,7 @@ EOF
 }
 
 create_app_success_flow_stub() {
+  #R001: Crash-verify harness helper for successful app launch/crash flow stubs.
   cat > "${APP_PATH}" <<'EOF'
 #!/bin/bash
 set -euo pipefail
@@ -54,6 +59,7 @@ EOF
 }
 
 create_app_force_crash_bad_stub() {
+  #R001: Crash-verify harness helper for a bad forced-crash behavior stub.
   cat > "${APP_PATH}" <<'EOF'
 #!/bin/bash
 exit 0
@@ -102,5 +108,23 @@ EOF
   [[ "${output}" == *"crash-smoke.plcrash"* ]]
   [[ "${output}" == *"crash-smoke.json"* ]]
   run rg "^make _ui-build$" "${MAKE_LOG}"
+  [ "$status" -eq 0 ]
+}
+
+@test "R600: refresh_latest_artifacts resolves newest .plcrash/.json" {
+  #R600-T01: refresh_latest_artifacts selects the newest artifact of each kind.
+  run rg -F "refresh_latest_artifacts() {" "${SCRIPT_PATH}"
+  [ "$status" -eq 0 ]
+  run rg -F 'local plcrash_files=("$CRASH_REPORT_DIR"/*.plcrash)' "${SCRIPT_PATH}"
+  [ "$status" -eq 0 ]
+  run rg -F 'if [[ "$candidate" -nt "$latest_plcrash" ]]; then' "${SCRIPT_PATH}"
+  [ "$status" -eq 0 ]
+}
+
+@test "R605: artifacts_are_fresh requires both artifacts newer than marker" {
+  #R605-T01: artifacts_are_fresh checks both artifacts exist and are newer than MARKER_FILE.
+  run rg -F "artifacts_are_fresh() {" "${SCRIPT_PATH}"
+  [ "$status" -eq 0 ]
+  run rg -F '"$latest_plcrash" -nt "$MARKER_FILE" && "$latest_json" -nt "$MARKER_FILE"' "${SCRIPT_PATH}"
   [ "$status" -eq 0 ]
 }

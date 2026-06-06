@@ -8,6 +8,7 @@
 load helpers/repo_root
 
 setup() {
+  #R001: Test harness setup for mime_content contract checks.
   REPO_ROOT="$(mailcart_repo_root)"
   SRC="${REPO_ROOT}/cpp_core/src/mime_content.cpp"
 }

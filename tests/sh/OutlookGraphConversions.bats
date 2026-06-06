@@ -3,6 +3,7 @@
 load helpers/repo_root
 
 setup() {
+  #R010: Test harness setup for OutlookGraphConversions contract checks.
   REPO_ROOT="$(mailcart_repo_root)"
   CONVERSIONS_MM="${REPO_ROOT}/macos_app/Bridge/OutlookGraphConversions.mm"
 }

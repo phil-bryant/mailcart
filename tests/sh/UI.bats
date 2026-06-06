@@ -3,6 +3,7 @@
 load helpers/repo_root
 
 setup() {
+  #R001: Test harness setup for UI contract checks.
   REPO_ROOT="$(mailcart_repo_root)"
   UI_DIR="${REPO_ROOT}/macos_app/UI"
   APP_FILE="${UI_DIR}/OutlookMailApp.swift"

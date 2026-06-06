@@ -7,6 +7,7 @@
 load helpers/repo_root
 
 setup() {
+  #R001: Test harness setup for t02_run_dependency_freshness_tests contract checks.
   REPO_ROOT="$(mailcart_repo_root)"
   SRC="${REPO_ROOT}/tests/t02_run_dependency_freshness_tests.sh"
 }

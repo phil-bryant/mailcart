@@ -6,6 +6,7 @@
 load helpers/repo_root
 
 setup() {
+  #R001: Test harness setup for OutlookMail-Bridging-Header contract checks.
   REPO_ROOT="$(mailcart_repo_root)"
   HDR="${REPO_ROOT}/macos_app/OutlookMail-Bridging-Header.h"
 }

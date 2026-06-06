@@ -8,6 +8,7 @@
 load helpers/repo_root
 
 setup() {
+  #R001: Test harness setup for outlook_client contract checks.
   REPO_ROOT="$(mailcart_repo_root)"
   SRC="${REPO_ROOT}/cpp_core/src/outlook_client.cpp"
 }
@@ -85,5 +86,27 @@ setup() {
   run rg -F "parser_.ParseMessagePayload(raw_payload);" "${SRC}"
   [ "$status" -eq 0 ]
   run rg -F "OutlookMailcart mailcart(message_object);" "${SRC}"
+  [ "$status" -eq 0 ]
+}
+
+@test "R040: search result stores summaries/cursor/error via immutable accessors" {
+  #R040-T01: Search-result state stores summaries/cursor/error and exposes them through read-only accessors.
+  run rg -F "OutlookSearchResult::OutlookSearchResult(" "${SRC}"
+  [ "$status" -eq 0 ]
+  run rg -F "summaries_(std::move(summaries))" "${SRC}"
+  [ "$status" -eq 0 ]
+  run rg -F "const std::vector<OutlookMailcartSummary> &OutlookSearchResult::summaries() const" "${SRC}"
+  [ "$status" -eq 0 ]
+}
+
+@test "R045: cursor searches rewrite query and surface cursor/error markers" {
+  #R045-T01: Cursor searches rewrite query and surface __nextCursor/__error markers into result metadata.
+  run rg -F "OutlookSearchResult OutlookClient::SearchMailcartsPage(" "${SRC}"
+  [ "$status" -eq 0 ]
+  run rg -F 'raw_query = "__cursor__" + cursor;' "${SRC}"
+  [ "$status" -eq 0 ]
+  run rg -F 'stringFieldOrDefault("__nextCursor", "")' "${SRC}"
+  [ "$status" -eq 0 ]
+  run rg -F 'stringFieldOrDefault("__error", "")' "${SRC}"
   [ "$status" -eq 0 ]
 }

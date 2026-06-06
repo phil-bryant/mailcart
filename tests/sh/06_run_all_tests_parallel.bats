@@ -1,6 +1,7 @@
 #!/usr/bin/env bats
 
 src() {
+  #R001: Test harness setup for 06_run_all_tests_parallel contract checks.
   printf '%s' "${BATS_TEST_DIRNAME}/../../06_run_all_tests_parallel.sh"
 }
 

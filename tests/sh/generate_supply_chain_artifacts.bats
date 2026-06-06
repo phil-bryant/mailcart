@@ -3,6 +3,7 @@
 load helpers/repo_root
 
 setup() {
+  #R001: Test harness setup for generate_supply_chain_artifacts contract checks.
   REPO_ROOT="$(mailcart_repo_root)"
   SHIM="${REPO_ROOT}/src/scripts/security/generate_supply_chain_artifacts.py"
 }

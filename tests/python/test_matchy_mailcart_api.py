@@ -25,6 +25,7 @@ import matchy_mailcart_api as api  # noqa: E402
 
 class SearchMessagesTests(unittest.TestCase):
     def _search(self, query: str, rows: list[dict[str, object]], limit: int = 50) -> dict[str, object]:
+        #R020: Helper - run search_messages against mocked Graph rows.
         with mock.patch.object(api, "_graph_get", return_value={"value": rows}) as graph_get:
             result = api.search_messages(query=query, limit=limit)
         graph_get.assert_called_once()
@@ -41,6 +42,7 @@ class SearchMessagesTests(unittest.TestCase):
         body_content_type: str = "text",
         received_at: str = "2026-04-15T12:00:00Z",
     ) -> dict[str, object]:
+        #R020: Helper - build a Graph message fixture for search tests.
         return {
             "id": message_id,
             "subject": subject,
@@ -51,7 +53,7 @@ class SearchMessagesTests(unittest.TestCase):
         }
 
     def test_field_scoping_filters_subject_sender_body_independently(self) -> None:
-        #R020-T01
+        #R020-T01: field-scoped tokens filter subject/sender/body independently.
         rows = [
             self._mk_message("msg1", subject="DoorDash receipt", sender="merchant@example.com", body_content="hello"),
             self._mk_message("msg2", subject="Hello", sender="doordash@merchant.com", body_content="hello"),
@@ -65,7 +67,7 @@ class SearchMessagesTests(unittest.TestCase):
         self.assertEqual(body_ids, ["msg3"])
 
     def test_case_insensitive_field_matches_return_same_results(self) -> None:
-        #R020-T01
+        #R020-T01: scoped matches are case-insensitive.
         rows = [
             self._mk_message("msg1", subject="DoorDash", sender="shop@example.com", body_content="x"),
             self._mk_message("msg2", subject="x", sender="DoorDash@shop.com", body_content="x"),
@@ -84,7 +86,7 @@ class SearchMessagesTests(unittest.TestCase):
                 self.assertEqual(body_ids, expected_body)
 
     def test_whitespace_normalization_matches_irregular_spacing(self) -> None:
-        #R020-T01
+        #R020-T01: irregular spacing is normalized before matching.
         rows = [
             self._mk_message("subject", subject="DoorDash order total", sender="x@example.com", body_content="x"),
             self._mk_message("sender", subject="x", sender="DoorDash order total", body_content="x"),
@@ -98,7 +100,7 @@ class SearchMessagesTests(unittest.TestCase):
         self.assertEqual(body_ids, ["body"])
 
     def test_multiple_tokens_use_and_semantics(self) -> None:
-        #R020-T01
+        #R020-T01: multiple scoped tokens combine with AND semantics.
         rows = [
             self._mk_message("msgA", subject="receipt available", sender="hello@example.com", body_content="x"),
             self._mk_message("msgB", subject="invoice", sender="doordash@shop.com", body_content="x"),
@@ -108,7 +110,7 @@ class SearchMessagesTests(unittest.TestCase):
         self.assertEqual(ids, ["msgC"])
 
     def test_date_bounds_are_inclusive(self) -> None:
-        #R020-T01
+        #R020-T01: from:/to: date bounds are inclusive.
         rows = [
             self._mk_message("start", received_at="2026-04-01T00:00:00Z"),
             self._mk_message("middle", received_at="2026-04-15T12:00:00Z"),
@@ -120,7 +122,7 @@ class SearchMessagesTests(unittest.TestCase):
         self.assertEqual(ids, ["start", "middle", "end"])
 
     def test_graph_query_includes_server_side_date_filter(self) -> None:
-        #R020-T01
+        #R020-T01: date queries push a server-side receivedDateTime filter.
         with mock.patch.object(api, "_graph_get", return_value={"value": []}) as graph_get:
             api.search_messages(query="from:2026-04-01 to:2026-04-30", limit=25)
         _, kwargs = graph_get.call_args
@@ -130,7 +132,7 @@ class SearchMessagesTests(unittest.TestCase):
         self.assertIn("receivedDateTime le 2026-04-30T23:59:59Z", params["$filter"])
 
     def test_text_and_date_filters_are_combined_with_and(self) -> None:
-        #R020-T01
+        #R020-T01: text and date filters combine with AND semantics.
         rows = [
             self._mk_message("in_range_match", sender="doordash@shop.com", received_at="2026-04-10T10:00:00Z"),
             self._mk_message("out_of_range_match", sender="doordash@shop.com", received_at="2026-05-10T10:00:00Z"),
@@ -143,7 +145,7 @@ class SearchMessagesTests(unittest.TestCase):
         self.assertEqual(ids, ["in_range_match"])
 
     def test_token_order_does_not_change_results(self) -> None:
-        #R020-T01
+        #R020-T01: token order does not change results.
         rows = [
             self._mk_message("x", subject="receipt", sender="doordash@shop.com"),
             self._mk_message("y", subject="receipt", sender="other@shop.com"),
@@ -156,7 +158,7 @@ class SearchMessagesTests(unittest.TestCase):
         self.assertEqual(ids_a, ["x"])
 
     def test_matchy_scoped_query_shape_matches_expected_message(self) -> None:
-        #R020-T01
+        #R020-T01: scoped query shape matches only the expected message.
         target = self._mk_message(
             "target",
             subject="DoorDash order confirmation",
@@ -185,7 +187,7 @@ class SearchMessagesTests(unittest.TestCase):
         self.assertFalse(api._message_matches_criteria(out_of_window, criteria))
 
     def test_invalid_or_unscoped_tokens_return_400(self) -> None:
-        #R020-T01
+        #R020-T01: invalid or unscoped tokens return HTTP 400.
         with self.assertRaises(Exception) as unscoped_ctx:
             api.search_messages(query="doordash", limit=10)
         self.assertEqual(getattr(unscoped_ctx.exception, "status_code", None), 400)
@@ -194,6 +196,7 @@ class SearchMessagesTests(unittest.TestCase):
         self.assertEqual(getattr(unsupported_ctx.exception, "status_code", None), 400)
 
     def test_empty_query_returns_recent_mail(self) -> None:
+        #R020: empty query returns recent mail without a Graph date filter.
         rows = [
             self._mk_message("newest", subject="Newest", received_at="2026-06-02T12:00:00Z"),
             self._mk_message("middle", subject="Middle", received_at="2026-06-01T12:00:00Z"),
@@ -209,7 +212,7 @@ class SearchMessagesTests(unittest.TestCase):
         self.assertEqual([msg["message_id"] for msg in result["messages"]], ["newest", "middle"])
 
     def test_search_paginates_for_older_date_windows(self) -> None:
-        #R020-T01
+        #R020-T01: search follows @odata.nextLink for older date windows.
         page_one = [self._mk_message("newer", received_at="2026-05-27T10:00:00Z")]
         page_two = [self._mk_message("older", received_at="2026-05-22T10:00:00Z")]
         with (
@@ -231,7 +234,7 @@ class SearchMessagesTests(unittest.TestCase):
 
 class GetMessageEndpointTests(unittest.TestCase):
     def test_get_message_returns_full_body_for_html(self) -> None:
-        #R035-T01
+        #R035-T01: single-message fetch returns html_body and recipients.
         payload = {
             "id": "msg_42",
             "subject": "Receipt",
@@ -260,7 +263,7 @@ class GetMessageEndpointTests(unittest.TestCase):
         self.assertEqual(result["received_at"], "2026-05-17T12:00:00Z")
 
     def test_get_message_returns_text_body_for_plain(self) -> None:
-        #R035-T01
+        #R035-T01: single-message fetch returns text_body for plain mail.
         payload = {
             "id": "msg_99",
             "subject": "Plain",
@@ -278,7 +281,7 @@ class GetMessageEndpointTests(unittest.TestCase):
         self.assertEqual(result["recipients"], "")
 
     def test_get_message_rejects_blank_id(self) -> None:
-        #R035-T02
+        #R035-T02: single-message fetch rejects blank ids with HTTP 400.
         with self.assertRaises(Exception) as ctx:
             api.get_message("   ")
         self.assertEqual(getattr(ctx.exception, "status_code", None), 400)
@@ -286,13 +289,14 @@ class GetMessageEndpointTests(unittest.TestCase):
 
 class GetMessageRoutingTests(unittest.TestCase):
     def test_get_message_route_is_registered(self) -> None:
-        #R035-T01
+        #R035-T01: /v1/messages/{message_id} route is registered.
         paths = {getattr(route, "path", None) for route in api.app.routes}
         self.assertIn("/v1/messages/{message_id}", paths)
 
 
 class EndpointAuthContractTests(unittest.TestCase):
     def _route_for(self, path: str, method: str):
+        #R035: Helper - resolve a registered route by path and method.
         for route in api.app.routes:
             if getattr(route, "path", None) != path:
                 continue
@@ -302,6 +306,7 @@ class EndpointAuthContractTests(unittest.TestCase):
         self.fail(f"missing route: {method} {path}")
 
     def test_search_get_move_routes_have_no_auth_dependencies(self) -> None:
+        #R035: search/get/move routes declare no auth dependencies.
         for path, method in [
             ("/v1/messages/search", "GET"),
             ("/v1/messages/{message_id}", "GET"),
@@ -317,6 +322,7 @@ class EndpointAuthContractTests(unittest.TestCase):
 
 class GraphRequestAuthTests(unittest.TestCase):
     def test_graph_request_retries_once_on_401_then_succeeds(self) -> None:
+        #R027-T01: Graph request retries once after a 401, then succeeds.
         first = mock.Mock(status_code=401, text="InvalidAuthenticationToken")
         second = mock.Mock(status_code=200, text='{"ok": true}')
         second.json.return_value = {"ok": True}
@@ -335,6 +341,7 @@ class GraphRequestAuthTests(unittest.TestCase):
         refresh_mock.assert_called_once_with(force=True)
 
     def test_graph_request_returns_502_when_refresh_fails_after_401(self) -> None:
+        #R027-T01: 401 with failed refresh surfaces HTTP 502.
         response = mock.Mock(status_code=401, text="InvalidAuthenticationToken")
 
         with (
@@ -350,6 +357,7 @@ class GraphRequestAuthTests(unittest.TestCase):
         self.assertIn("token refresh failed", str(getattr(ctx.exception, "detail", "")))
 
     def test_graph_request_returns_502_when_second_attempt_is_still_401(self) -> None:
+        #R030-T01: persistent 401 surfaces a 502 auth-failed detail.
         first = mock.Mock(status_code=401, text="InvalidAuthenticationToken")
         second = mock.Mock(status_code=401, text="InvalidAuthenticationToken")
 
@@ -371,6 +379,7 @@ class GraphRequestAuthTests(unittest.TestCase):
 
 class MessageIdEncodingTests(unittest.TestCase):
     def test_get_message_url_encodes_reserved_characters(self) -> None:
+        #R035-T01: get_message percent-encodes reserved id characters.
         payload = {
             "id": "abc123==",
             "subject": "",
@@ -385,6 +394,7 @@ class MessageIdEncodingTests(unittest.TestCase):
         self.assertEqual(graph_get.call_args.args[0], "/me/messages/abc123%3D%3D")
 
     def test_get_message_url_normalizes_already_encoded_id(self) -> None:
+        #R035-T01: get_message normalizes an already-encoded id.
         payload = {
             "id": "abc123==",
             "subject": "",
@@ -399,6 +409,7 @@ class MessageIdEncodingTests(unittest.TestCase):
         self.assertEqual(graph_get.call_args.args[0], "/me/messages/abc123%3D%3D")
 
     def test_move_message_url_encodes_reserved_characters(self) -> None:
+        #R025-T01: move_message percent-encodes reserved id characters.
         with (
             mock.patch.object(api, "_get_or_create_folder_id", return_value="folder-1"),
             mock.patch.object(api, "_graph_post", return_value={"id": "moved-1"}) as graph_post,
@@ -410,10 +421,12 @@ class MessageIdEncodingTests(unittest.TestCase):
 
 class HttpsStartupTests(unittest.TestCase):
     def test_api_base_is_https_only(self) -> None:
+        #R040-T01: API base URL is HTTPS-only.
         self.assertTrue(api.API_HTTPS_BASE.startswith("https://"))
         self.assertFalse(api.API_HTTPS_BASE.startswith("http://"))
 
     def test_resolve_tls_materials_rejects_missing_cert(self) -> None:
+        #R045-T01: TLS resolution fails fast when the cert file is missing.
         with tempfile.TemporaryDirectory() as temp_dir:
             cert_path = Path(temp_dir) / "missing-cert.pem"
             key_path = Path(temp_dir) / "key.pem"
@@ -431,6 +444,7 @@ class HttpsStartupTests(unittest.TestCase):
         self.assertIn(api.TLS_CERT_ENV, str(ctx.exception))
 
     def test_run_server_uses_https_probe_for_existing_process(self) -> None:
+        #R040-T01: startup reuses an existing healthy HTTPS process.
         with tempfile.TemporaryDirectory() as temp_dir:
             cert_path = Path(temp_dir) / "cert.pem"
             key_path = Path(temp_dir) / "key.pem"
@@ -456,6 +470,7 @@ class HttpsStartupTests(unittest.TestCase):
         get_mock.assert_called_once_with("https://127.0.0.1:8788/health", timeout=1.5, verify=str(cert_path))
 
     def test_run_server_starts_uvicorn_with_ssl_files(self) -> None:
+        #R040-T01: startup launches uvicorn with ssl_certfile and ssl_keyfile.
         with tempfile.TemporaryDirectory() as temp_dir:
             cert_path = Path(temp_dir) / "cert.pem"
             key_path = Path(temp_dir) / "key.pem"
@@ -484,6 +499,7 @@ class HttpsStartupTests(unittest.TestCase):
         )
 
     def test_run_server_reports_legacy_http_process_conflict(self) -> None:
+        #R040-T01: startup reports a legacy HTTP process conflict.
         with tempfile.TemporaryDirectory() as temp_dir:
             cert_path = Path(temp_dir) / "cert.pem"
             key_path = Path(temp_dir) / "key.pem"
@@ -510,22 +526,22 @@ class HttpsStartupTests(unittest.TestCase):
 
 class AhoCorasickTests(unittest.TestCase):
     def test_search_reports_substring_patterns_in_single_pass(self) -> None:
-        #R050-T01
+        #R050-T01: Aho-Corasick reports all substring hits in one pass.
         matcher = api.AhoCorasick(["coffee", "order", "absent"])
         self.assertEqual(matcher.search("your coffee order is ready"), {"coffee", "order"})
 
     def test_search_detects_overlapping_suffix_patterns(self) -> None:
-        #R050-T01
+        #R050-T01: Aho-Corasick handles overlapping suffix patterns.
         matcher = api.AhoCorasick(["he", "she", "his", "hers"])
         self.assertEqual(matcher.search("ushers"), {"she", "he", "hers"})
 
     def test_empty_patterns_never_match(self) -> None:
-        #R050-T01
+        #R050-T01: empty patterns never match.
         matcher = api.AhoCorasick(["", "x"])
         self.assertEqual(matcher.search("anything"), set())
 
     def test_message_matches_criteria_uses_prebuilt_matcher_for_and_semantics(self) -> None:
-        #R050-T01
+        #R050-T01: prebuilt matcher preserves AND semantics.
         criteria = {
             "subject": ["receipt"],
             "sender": [],
@@ -550,7 +566,7 @@ class AhoCorasickTests(unittest.TestCase):
         self.assertFalse(api._message_matches_criteria(miss, criteria, matcher=matcher))
 
     def test_message_matches_criteria_builds_matcher_when_absent(self) -> None:
-        #R050-T01
+        #R050-T01: matcher is built on demand when absent.
         criteria = {"subject": [], "sender": ["doordash"], "body": [], "from": None, "to": None}
         match = {
             "subject": "x",
@@ -561,7 +577,7 @@ class AhoCorasickTests(unittest.TestCase):
         self.assertTrue(api._message_matches_criteria(match, criteria))
 
     def test_search_matches_naive_substring_scan_across_corpus(self) -> None:
-        #R050-T01
+        #R050-T01: Aho-Corasick matches a naive substring scan across a corpus.
         pattern_sets = [
             ["a", "ab", "bab", "bc", "bca", "c", "caa"],
             ["he", "she", "his", "hers"],

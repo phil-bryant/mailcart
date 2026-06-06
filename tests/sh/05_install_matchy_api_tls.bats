@@ -1,6 +1,7 @@
 #!/usr/bin/env bats
 
 src() {
+  #R001: Test harness setup for 05_install_matchy_api_tls contract checks.
   printf '%s' "${BATS_TEST_DIRNAME}/../../05_install_matchy_api_tls.sh"
 }
 

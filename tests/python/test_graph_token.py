@@ -24,6 +24,7 @@ from graph_token import (  # noqa: E402
 
 
 def _make_jwt(exp: int) -> str:
+    #R026: Build a JWT fixture with an exp claim for token-lifecycle tests.
     header = base64.urlsafe_b64encode(json.dumps({"alg": "none", "typ": "JWT"}).encode()).decode().rstrip("=")
     payload = base64.urlsafe_b64encode(json.dumps({"exp": exp}).encode()).decode().rstrip("=")
     return f"{header}.{payload}.signature"
@@ -31,11 +32,13 @@ def _make_jwt(exp: int) -> str:
 
 class GraphTokenModuleTests(unittest.TestCase):
     def test_jwt_expires_at_reads_exp_claim(self) -> None:
+        #R026: jwt_expires_at reads the exp claim used for refresh decisions.
         exp = int(time.time()) + 3600
         token = _make_jwt(exp)
         self.assertEqual(jwt_expires_at(token), exp)
 
     def test_token_session_validity_uses_buffer(self) -> None:
+        #R026: TokenSession.is_valid applies the pre-expiry refresh buffer.
         session = TokenSession(
             access_token="token",
             refresh_token="refresh",
@@ -47,6 +50,7 @@ class GraphTokenModuleTests(unittest.TestCase):
         self.assertTrue(session.is_valid())
 
     def test_get_access_token_uses_valid_cache(self) -> None:
+        #R028: get_access_token returns a valid token from the persisted cache.
         with tempfile.TemporaryDirectory() as tmp_dir:
             cache_path = Path(tmp_dir) / "graph_oauth.json"
             exp = int(time.time()) + 7200
@@ -65,6 +69,7 @@ class GraphTokenModuleTests(unittest.TestCase):
             self.assertEqual(manager.get_access_token(), "cached-access")
 
     def test_refresh_persists_rotated_tokens(self) -> None:
+        #R028: refresh persists rotated tokens to the 0o600 cache.
         with tempfile.TemporaryDirectory() as tmp_dir:
             cache_path = Path(tmp_dir) / "graph_oauth.json"
             manager = GraphTokenManager(cache_path=cache_path)
@@ -93,6 +98,7 @@ class GraphTokenModuleTests(unittest.TestCase):
             self.assertEqual(oct(cache_path.stat().st_mode & 0o777), oct(0o600))
 
     def test_refresh_requires_client_id(self) -> None:
+        #R026: refresh fails clearly when no client id can be resolved.
         with tempfile.TemporaryDirectory() as tmp_dir:
             manager = GraphTokenManager(cache_path=Path(tmp_dir) / "graph_oauth.json")
             session = TokenSession(
@@ -108,6 +114,7 @@ class GraphTokenModuleTests(unittest.TestCase):
                         manager.refresh(force=True, session=session)
 
     def test_client_id_reads_from_psa_when_env_missing(self) -> None:
+        #R026: _client_id falls back to the PSA store when env is unset.
         with tempfile.TemporaryDirectory() as tmp_dir:
             manager = GraphTokenManager(cache_path=Path(tmp_dir) / "graph_oauth.json")
             with mock.patch.dict(os.environ, {}, clear=True):
@@ -115,6 +122,7 @@ class GraphTokenModuleTests(unittest.TestCase):
                     self.assertEqual(manager._client_id(), "client-from-psa")
 
     def test_missing_credentials_raise_clear_error(self) -> None:
+        #R026: get_access_token raises a clear error when all credentials are absent.
         with tempfile.TemporaryDirectory() as tmp_dir:
             manager = GraphTokenManager(cache_path=Path(tmp_dir) / "missing.json")
             with mock.patch.dict(os.environ, {}, clear=True):

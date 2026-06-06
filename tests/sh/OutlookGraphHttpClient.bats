@@ -3,6 +3,7 @@
 load helpers/repo_root
 
 setup() {
+  #R015: Test harness setup for OutlookGraphHttpClient contract checks.
   REPO_ROOT="$(mailcart_repo_root)"
   HTTP_MM="${REPO_ROOT}/macos_app/Bridge/OutlookGraphHttpClient.mm"
 }
@@ -49,4 +50,42 @@ setup() {
   [ "$status" -eq 0 ]
   run rg -F '@"sender"' "${HTTP_MM}"
   [ "$status" -ne 0 ]
+}
+
+@test "R035: cursor extraction recognizes __cursor__ query markers" {
+  #R035-T01: Cursor extraction recognizes __cursor__-prefixed queries and returns the suffix cursor value.
+  run rg -F "NSString *ExtractCursorFromQuery(std::string query)" "${HTTP_MM}"
+  [ "$status" -eq 0 ]
+  run rg -F "[query_text hasPrefix:kCursorPrefix]" "${HTTP_MM}"
+  [ "$status" -eq 0 ]
+}
+
+@test "R040: attachment filename normalization is safe and deterministic" {
+  #R040-T01: Attachment filename normalization falls back to attachment.bin and replaces path separators with underscores.
+  run rg -F "NSString *NormalizedAttachmentFileName(NSString *name)" "${HTTP_MM}"
+  [ "$status" -eq 0 ]
+  run rg -F '@"attachment.bin"' "${HTTP_MM}"
+  [ "$status" -eq 0 ]
+  run rg -F 'stringByReplacingOccurrencesOfString:@"/" withString:@"_"' "${HTTP_MM}"
+  [ "$status" -eq 0 ]
+}
+
+@test "R045: attachment payload builder fetches and normalizes Graph attachments" {
+  #R045-T01: Attachment payload builder fetches message attachments and normalizes id/name/contentType/size fields.
+  run rg -F "NSArray *BuildGraphAttachmentPayload(" "${HTTP_MM}"
+  [ "$status" -eq 0 ]
+  run rg -F '/attachments?$select=id,name,contentType,size' "${HTTP_MM}"
+  [ "$status" -eq 0 ]
+  run rg -F '@"contentType" : JsonStringOrEmpty(candidate[@"contentType"])' "${HTTP_MM}"
+  [ "$status" -eq 0 ]
+}
+
+@test "R050: message payload builder emits fallback shape and merges attachments" {
+  #R050-T01: Message payload builder emits fallback shape and merges normalized attachments into fetched message dictionaries.
+  run rg -F "std::string BuildGraphMessagePayload(const std::string &message_id)" "${HTTP_MM}"
+  [ "$status" -eq 0 ]
+  run rg -F '?$select=id,subject,body,from,toRecipients,receivedDateTime' "${HTTP_MM}"
+  [ "$status" -eq 0 ]
+  run rg -F 'result_dictionary[@"attachments"] = attachments;' "${HTTP_MM}"
+  [ "$status" -eq 0 ]
 }

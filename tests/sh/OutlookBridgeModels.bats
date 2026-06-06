@@ -3,6 +3,7 @@
 load helpers/repo_root
 
 setup() {
+  #R005: Test harness setup for OutlookBridgeModels contract checks.
   REPO_ROOT="$(mailcart_repo_root)"
   MODELS_H="${REPO_ROOT}/macos_app/Bridge/OutlookBridgeModels.h"
 }

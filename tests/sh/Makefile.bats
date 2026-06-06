@@ -3,6 +3,7 @@
 load helpers/repo_root
 
 setup() {
+  #R001: Make-test harness setup for Makefile contract checks.
   REPO_ROOT="$(mailcart_repo_root)"
   export REPO_ROOT
   export MAKEFILE_PATH="${REPO_ROOT}/Makefile"
@@ -22,14 +23,17 @@ setup() {
 }
 
 teardown() {
+  #R001: Make-test harness teardown for Makefile contract checks.
   rm -rf "${TMP_ROOT}"
 }
 
 run_make() {
+  #R001: Make-test harness helper to execute sandboxed make commands.
   run env PATH="${STUB_BIN}:/usr/bin:/bin" make -C "${SANDBOX}" "$@"
 }
 
 create_compiler_stub() {
+  #R001: Make-test harness helper to stub clang++ invocations.
   cat > "${STUB_BIN}/clang++" <<'EOF'
 #!/bin/bash
 printf "clang++ %s\n" "$*" >> "${TEST_LOG}"
@@ -55,6 +59,7 @@ EOF
 }
 
 create_xcrun_stub() {
+  #R001: Make-test harness helper to stub xcrun invocations.
   cat > "${STUB_BIN}/xcrun" <<'EOF'
 #!/bin/bash
 printf "xcrun %s\n" "$*" >> "${TEST_LOG}"
@@ -83,6 +88,7 @@ EOF
 }
 
 create_xcode_stubs() {
+  #R001: Make-test harness helper to stub xcodegen/xcodebuild.
   cat > "${STUB_BIN}/xcodegen" <<'EOF'
 #!/bin/bash
 printf "xcodegen %s\n" "$*" >> "${TEST_LOG}"
@@ -99,6 +105,7 @@ EOF
 }
 
 create_open_stub() {
+  #R001: Make-test harness helper to stub open invocations.
   cat > "${STUB_BIN}/open" <<'EOF'
 #!/bin/bash
 printf "open %s\n" "$*" >> "${TEST_LOG}"
@@ -108,6 +115,7 @@ EOF
 }
 
 create_1psa_stub() {
+  #R001: Make-test harness helper to stub 1Password CLI token lookups.
   cat > "${STUB_BIN}/1psa" <<'EOF'
 #!/bin/bash
 printf "1psa %s\n" "$*" >> "${TEST_LOG}"
@@ -121,6 +129,7 @@ EOF
 }
 
 create_ps_stub_alive() {
+  #R001: Make-test harness helper to simulate a live process.
   cat > "${STUB_BIN}/ps" <<'EOF'
 #!/bin/bash
 exit 0
@@ -129,6 +138,7 @@ EOF
 }
 
 create_ps_stub_dead() {
+  #R001: Make-test harness helper to simulate a missing process.
   cat > "${STUB_BIN}/ps" <<'EOF'
 #!/bin/bash
 exit 1
@@ -137,6 +147,7 @@ EOF
 }
 
 create_kill_stub() {
+  #R001: Make-test harness helper to stub kill invocations.
   cat > "${STUB_BIN}/kill" <<'EOF'
 #!/bin/bash
 exit 0
@@ -145,6 +156,7 @@ EOF
 }
 
 create_all_stubs() {
+  #R001: Make-test harness helper to provision the common stub set.
   create_compiler_stub
   create_xcrun_stub
   create_xcode_stubs
@@ -152,6 +164,7 @@ create_all_stubs() {
 }
 
 create_bats_stub() {
+  #R001: Make-test harness helper to stub bats invocations.
   cat > "${STUB_BIN}/bats" <<'EOF'
 #!/bin/bash
 printf "bats %s\n" "$*" >> "${TEST_LOG}"
@@ -161,6 +174,7 @@ EOF
 }
 
 create_ui_regression_source_fixtures() {
+  #R001: Make-test harness helper to seed UI regression fixture sources.
   mkdir -p "${SANDBOX}/macos_app/UI"
   cat > "${SANDBOX}/macos_app/UI/OutlookMailContentView.swift" <<'EOF'
 import SwiftUI
@@ -224,6 +238,7 @@ EOF
 }
 
 create_shellcheck_stub() {
+  #R001: Make-test harness helper to stub shellcheck.
   cat > "${STUB_BIN}/shellcheck" <<'EOF'
 #!/bin/bash
 printf "shellcheck argc=%s" "$#" >> "${TEST_LOG}"
@@ -237,6 +252,7 @@ EOF
 }
 
 create_semgrep_stub() {
+  #R001: Make-test harness helper to stub semgrep.
   cat > "${STUB_BIN}/semgrep" <<'EOF'
 #!/bin/bash
 printf "semgrep %s\n" "$*" >> "${TEST_LOG}"
@@ -246,6 +262,7 @@ EOF
 }
 
 create_clang_tidy_stub() {
+  #R001: Make-test harness helper to stub clang-tidy.
   cat > "${STUB_BIN}/clang-tidy" <<'EOF'
 #!/bin/bash
 printf "clang-tidy %s\n" "$*" >> "${TEST_LOG}"
@@ -264,6 +281,7 @@ EOF
 }
 
 create_ruff_stub() {
+  #R001: Make-test harness helper to stub ruff.
   cat > "${STUB_BIN}/ruff" <<'EOF'
 #!/bin/bash
 printf "ruff %s\n" "$*" >> "${TEST_LOG}"
@@ -273,6 +291,7 @@ EOF
 }
 
 create_swiftlint_stub() {
+  #R001: Make-test harness helper to stub swiftlint.
   cat > "${STUB_BIN}/swiftlint" <<'EOF'
 #!/bin/bash
 printf "swiftlint %s\n" "$*" >> "${TEST_LOG}"
@@ -288,6 +307,7 @@ EOF
 }
 
 create_bandit_stub() {
+  #R001: Make-test harness helper to stub bandit.
   cat > "${STUB_BIN}/bandit" <<'EOF'
 #!/bin/bash
 printf "bandit %s\n" "$*" >> "${TEST_LOG}"
@@ -297,6 +317,7 @@ EOF
 }
 
 create_detect_secrets_stub() {
+  #R001: Make-test harness helper to stub detect-secrets.
   cat > "${STUB_BIN}/detect-secrets" <<'EOF'
 #!/bin/bash
 printf "detect-secrets %s\n" "$*" >> "${TEST_LOG}"
@@ -313,6 +334,7 @@ EOF
 }
 
 create_git_ls_files_stub() {
+  #R001: Make-test harness helper to stub git ls-files.
   cat > "${STUB_BIN}/git" <<'EOF'
 #!/bin/bash
 if [ "$1" = "ls-files" ]; then
@@ -327,6 +349,7 @@ EOF
 }
 
 create_clamscan_stub() {
+  #R001: Make-test harness helper to stub clamscan.
   cat > "${STUB_BIN}/clamscan" <<'EOF'
 #!/bin/bash
 printf "clamscan %s\n" "$*" >> "${TEST_LOG}"
@@ -357,6 +380,7 @@ EOF
 }
 
 create_gitleaks_stub() {
+  #R001: Make-test harness helper to stub gitleaks.
   cat > "${STUB_BIN}/gitleaks" <<'EOF'
 #!/bin/bash
 printf "gitleaks %s\n" "$*" >> "${TEST_LOG}"
@@ -366,6 +390,7 @@ EOF
 }
 
 create_python3_stub() {
+  #R001: Make-test harness helper to stub python3.
   cat > "${STUB_BIN}/python3" <<'EOF'
 #!/bin/bash
 if [ "$1" = "-c" ]; then
@@ -379,6 +404,7 @@ EOF
 }
 
 create_bash_stub() {
+  #R001: Make-test harness helper to stub bash.
   cat > "${STUB_BIN}/bash" <<'EOF'
 #!/bin/bash
 printf "bash %s\n" "$*" >> "${TEST_LOG}"

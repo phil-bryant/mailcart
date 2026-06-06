@@ -49,6 +49,17 @@ Design: Script accepts `APP_EXECUTABLE`, `CRASH_REPORT_DIR`, and `STARTUP_WAIT_S
 Tests:
 - R040-T01: Script honors `APP_EXECUTABLE`, `CRASH_REPORT_DIR`, and `STARTUP_WAIT_SECONDS` overrides.
 
+R600  Statement: Resolve the newest persisted crash artifacts before freshness validation.
+Design: `refresh_latest_artifacts` globs `${CRASH_REPORT_DIR}` for `.plcrash` and `.json` files under `nullglob`, clears cached latest paths when either class is missing, and otherwise keeps the newest file of each type via `-nt`.
+Tests:
+- R600-T01: Crash verification resolves the newest `.plcrash` and `.json` artifacts before freshness checks.
+
+R605  Statement: Treat artifacts as fresh only when both classes exist and are newer than the run marker.
+Design: `artifacts_are_fresh` succeeds only when `latest_plcrash` and `latest_json` are non-empty and each is newer than `MARKER_FILE`.
+Tests:
+- R605-T01: Crash verification requires both artifact files to be newer than the marker.
+
 ## Changelog
 
 - 2026-05-12: Added script-scoped crash reporter requirements for `scripts/verify_macos_crash_reporter.sh`.
+- 2026-06-06: Added source-helper requirements R600/R605 for latest-artifact selection and marker-based freshness checks.

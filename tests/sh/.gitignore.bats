@@ -3,6 +3,7 @@
 load helpers/repo_root
 
 setup() {
+  #R001: Test harness setup for .gitignore contract checks.
   REPO_ROOT="$(mailcart_repo_root)"
   GITIGNORE="${REPO_ROOT}/.gitignore"
 }

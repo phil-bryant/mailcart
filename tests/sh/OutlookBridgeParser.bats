@@ -3,6 +3,7 @@
 load helpers/repo_root
 
 setup() {
+  #R035: Test harness setup for OutlookBridgeParser contract checks.
   REPO_ROOT="$(mailcart_repo_root)"
   PARSER_MM="${REPO_ROOT}/macos_app/Bridge/OutlookBridgeParser.mm"
 }

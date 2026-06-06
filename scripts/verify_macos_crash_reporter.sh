@@ -34,6 +34,7 @@ if [[ ! -x "$APP_EXECUTABLE" ]]; then
     exit 1
 fi
 
+#R600: Resolve newest persisted .plcrash/.json crash artifacts before freshness checks.
 refresh_latest_artifacts() {
     shopt -s nullglob
     local plcrash_files=("$CRASH_REPORT_DIR"/*.plcrash)
@@ -62,6 +63,7 @@ refresh_latest_artifacts() {
     done
 }
 
+#R605: Require both crash artifacts to exist and be newer than the verification run marker.
 artifacts_are_fresh() {
     [[ -n "$latest_plcrash" && -n "$latest_json" && "$latest_plcrash" -nt "$MARKER_FILE" && "$latest_json" -nt "$MARKER_FILE" ]]
 }

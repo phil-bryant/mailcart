@@ -8,6 +8,7 @@
 load helpers/repo_root
 
 setup() {
+  #R001: Test harness setup for outlook_mailcart contract checks.
   REPO_ROOT="$(mailcart_repo_root)"
   SRC="${REPO_ROOT}/cpp_core/src/outlook_mailcart.cpp"
 }
@@ -77,5 +78,35 @@ setup() {
   run rg -F "std::string OutlookMailcart::type() const" "${SRC}"
   [ "$status" -eq 0 ]
   run rg -F 'std::string outlook_type = "outlook_mailcart";' "${SRC}"
+  [ "$status" -eq 0 ]
+}
+
+@test "R040: attachment count parser accepts only validated positive integers" {
+  #R040-T01: Attachment-count parsing uses strtol validation and only accepts fully parsed positive integers.
+  run rg -F "int ParseAttachmentCount(const OutlookJsonObject &json_object)" "${SRC}"
+  [ "$status" -eq 0 ]
+  run rg -F "std::strtol(attachment_count_text.c_str()" "${SRC}"
+  [ "$status" -eq 0 ]
+  run rg -F "parsed_value > 0" "${SRC}"
+  [ "$status" -eq 0 ]
+}
+
+@test "R045: attachment builder reads indexed fields and appends attachments" {
+  #R045-T01: Attachment-row builder reads indexed fields and appends one attachment per parsed index.
+  run rg -F "std::vector<OutlookAttachment> BuildAttachmentsFromJson(" "${SRC}"
+  [ "$status" -eq 0 ]
+  run rg -F '"attachment" + std::to_string(attachment_index)' "${SRC}"
+  [ "$status" -eq 0 ]
+  run rg -F "attachments.emplace_back(" "${SRC}"
+  [ "$status" -eq 0 ]
+}
+
+@test "R050: attachment value type stores and exposes immutable fields" {
+  #R050-T01: Attachment ctor/accessors preserve stored id/name/type/size state.
+  run rg -F "OutlookAttachment::OutlookAttachment(" "${SRC}"
+  [ "$status" -eq 0 ]
+  run rg -F "const std::string &OutlookAttachment::fileName() const" "${SRC}"
+  [ "$status" -eq 0 ]
+  run rg -F "int OutlookAttachment::sizeInBytes() const" "${SRC}"
   [ "$status" -eq 0 ]
 }

@@ -43,6 +43,7 @@ TLS_CERT_DEFAULT = TLS_DIR_DEFAULT / "matchy-localhost-cert.pem"
 TLS_KEY_DEFAULT = TLS_DIR_DEFAULT / "matchy-localhost-key.pem"
 
 
+#R600: Classify Graph responses as auth failures (HTTP 401 or known invalid-token bodies) to gate retry/refresh.
 def _is_auth_failure(status_code: int, body: str) -> bool:
     if status_code == 401:
         return True
@@ -101,14 +102,17 @@ def _graph_request(method: str, path: str, *, params: dict[str, Any] | None = No
     raise HTTPException(status_code=502, detail="Graph request failed after token refresh retry")
 
 
+#R027: Issue Graph GET requests through the shared authenticated request/retry pipeline.
 def _graph_get(path: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
     return _graph_request("GET", path, params=params)
 
 
+#R605: Issue authenticated Graph POST requests via the shared retry-aware _graph_request helper.
 def _graph_post(path: str, payload: dict[str, Any]) -> dict[str, Any]:
     return _graph_request("POST", path, payload=payload)
 
 
+#R020: Follow Graph @odata.nextLink pagination only when host and base path are trusted.
 def _graph_get_next_link(next_link: str) -> dict[str, Any]:
     parsed_next = urlsplit(next_link)
     parsed_base = urlsplit(GRAPH_BASE)
@@ -121,6 +125,7 @@ def _graph_get_next_link(next_link: str) -> dict[str, Any]:
     return _graph_get(path, params=params)
 
 
+#R035: Normalize message ids and encode them as safe single Graph path segments.
 def _graph_message_path(message_id: str) -> str:
     # Normalize possibly pre-encoded IDs, then quote as a single path segment.
     normalized_id = unquote(message_id)
@@ -163,6 +168,7 @@ def _parse_iso_date(value: str) -> date:
     return date.fromisoformat(value)
 
 
+#R610: Leniently parse message receivedDateTime (ISO-8601, trailing Z) to a date; None when absent/unparseable.
 def _parse_received_at_date(value: str) -> date | None:
     if not value:
         return None
@@ -249,6 +255,7 @@ def _parse_scoped_query(query: str) -> dict[str, list[str] | date | None]:
 #R050: message field reports every scoped filter that occurs as a substring, replacing the per-filter
 #R050: re-scan with a single O(text + patterns) traversal across the full-mailbox search.
 class AhoCorasick:
+    #R050: Initialize matcher trie state and register all non-empty scoped patterns.
     def __init__(self, patterns: list[str]) -> None:
         self._goto: list[dict[str, int]] = [{}]
         self._fail: list[int] = [0]
@@ -258,6 +265,7 @@ class AhoCorasick:
                 self._add_pattern(pattern)
         self._build_failure_links()
 
+    #R050: Add one pattern to the trie, allocating transition nodes as needed.
     def _add_pattern(self, pattern: str) -> None:
         node = 0
         for char in pattern:
@@ -271,6 +279,7 @@ class AhoCorasick:
             node = next_node
         self._output[node].add(pattern)
 
+    #R050: Build failure transitions so one-pass matching supports overlap/fallback.
     def _build_failure_links(self) -> None:
         queue: deque[int] = deque()
         for next_node in self._goto[0].values():
@@ -513,6 +522,7 @@ def _resolve_tls_materials() -> tuple[str, str]:
     return str(cert_file), str(key_file)
 
 
+#R615: Probe whether the API port is already bound via a short-timeout localhost TCP connect.
 def _is_port_in_use(host: str, port: int) -> bool:
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.settimeout(0.25)
@@ -521,6 +531,7 @@ def _is_port_in_use(host: str, port: int) -> bool:
     return in_use
 
 
+#R040: Detect whether an already-bound HTTPS API instance is healthy on localhost.
 def _existing_server_is_healthy(cert_file: str) -> bool:
     try:
         probe = requests.get(f"{API_HTTPS_BASE}/health", timeout=1.5, verify=cert_file)
@@ -529,6 +540,7 @@ def _existing_server_is_healthy(cert_file: str) -> bool:
     return probe.status_code == 200 and '"status":"ok"' in probe.text
 
 
+#R040: Detect whether a legacy HTTP API instance occupies the configured localhost port.
 def _existing_http_server_is_healthy() -> bool:
     try:
         # Intentional localhost HTTP probe to detect and report a legacy non-TLS Mailcart API process.
