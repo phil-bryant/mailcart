@@ -3,7 +3,8 @@
 #include <utility>
 
 namespace
-{ // #R001: Coerce negative search limits to zero.
+{
+  // #R001: Coerce negative search limits to zero.
   int NormalizeLimit(int requested_limit)
   { int normalized_limit = requested_limit;
     if (normalized_limit < 0)
@@ -21,26 +22,31 @@ OutlookMailcartSummary::OutlookMailcartSummary(std::string message_id, std::stri
       received_at_(std::move(received_at))
 {}
 
+// #R005: Expose summary message id through a read-only accessor.
 const std::string &OutlookMailcartSummary::messageId() const
 { const std::string &value = message_id_;
   return value;
 }
 
+// #R005: Expose summary subject through a read-only accessor.
 const std::string &OutlookMailcartSummary::subject() const
 { const std::string &value = subject_;
   return value;
 }
 
+// #R005: Expose summary preview through a read-only accessor.
 const std::string &OutlookMailcartSummary::preview() const
 { const std::string &value = preview_;
   return value;
 }
 
+// #R005: Expose received-at timestamp through a read-only accessor.
 const std::string &OutlookMailcartSummary::receivedAt() const
 { const std::string &value = received_at_;
   return value;
 }
 
+// #R040: Store summary vectors plus cursor/error metadata as immutable search result state.
 OutlookSearchResult::OutlookSearchResult(
     std::vector<OutlookMailcartSummary> summaries,
     std::string next_cursor,
@@ -51,18 +57,21 @@ OutlookSearchResult::OutlookSearchResult(
 {
 }
 
+// #R040: Expose summary rows through a read-only accessor.
 const std::vector<OutlookMailcartSummary> &OutlookSearchResult::summaries() const
 {
   const std::vector<OutlookMailcartSummary> &value = summaries_;
   return value;
 }
 
+// #R040: Expose continuation cursor through a read-only accessor.
 const std::string &OutlookSearchResult::nextCursor() const
 {
   const std::string &value = next_cursor_;
   return value;
 }
 
+// #R040: Expose error marker through a read-only accessor.
 const std::string &OutlookSearchResult::errorMessage() const
 {
   const std::string &value = error_message_;
@@ -89,6 +98,7 @@ std::vector<OutlookMailcartSummary> OutlookClient::SearchMailcarts(std::string q
   return summaries;
 }
 
+// #R045: Rewrite cursor queries and surface marker objects as cursor/error metadata.
 OutlookSearchResult OutlookClient::SearchMailcartsPage(std::string query, int limit, std::string cursor) const
 {
   int normalized_limit = NormalizeLimit(limit);

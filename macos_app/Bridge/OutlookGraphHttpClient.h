@@ -17,7 +17,8 @@ namespace mailcart_bridge
   NSData *FetchGraphGetData(NSURL *url, NSString *token, BOOL binary_accept, NSString **error_text);
   NSString *FetchGraphGet(NSString *url_text);
 
-  // Normalize a Graph attachment file name into a safe single path component.
+  // #R035: Parse "__cursor__"-prefixed query markers into continuation cursors.
+  // #R040: Normalize a Graph attachment file name into a safe single path component.
   NSString *NormalizedAttachmentFileName(NSString *name);
 
   // #R020: Apply case-insensitive subject/preview search matching.
@@ -25,6 +26,7 @@ namespace mailcart_bridge
   // #R030: Return summary-only payload fields in search responses.
   std::string BuildGraphSearchPayload(const std::string &query, int limit);
 
-  // Build a single Graph message payload (with attachments) for the read path.
+  // #R045: Build normalized attachment payload rows merged into message read results.
+  // #R050: Build a deterministic single Graph message payload for read operations.
   std::string BuildGraphMessagePayload(const std::string &message_id);
 } // namespace mailcart_bridge

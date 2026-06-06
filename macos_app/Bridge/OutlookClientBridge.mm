@@ -32,6 +32,7 @@ class BridgeOutlookGateway : public OutlookServiceGateway
   }
 };
 
+// #R040: Own the bridge gateway/parser and managed C++ client lifecycle state.
 @interface OutlookClientBridge ()
 {
  @private

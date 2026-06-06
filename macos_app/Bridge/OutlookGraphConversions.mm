@@ -28,6 +28,7 @@ namespace mailcart_bridge
     return result;
   }
 
+  // #R010: Normalize unknown JSON scalar inputs to an empty NSString.
   NSString *JsonStringOrEmpty(id value)
   {
     NSString *normalized = @"";
@@ -38,6 +39,7 @@ namespace mailcart_bridge
     return normalized;
   }
 
+  // #R010: Normalize unknown JSON object inputs to an empty NSDictionary.
   NSDictionary *JsonDictionaryOrEmpty(id value)
   {
     NSDictionary *normalized = @{};
@@ -48,6 +50,7 @@ namespace mailcart_bridge
     return normalized;
   }
 
+  // #R010: Normalize unknown JSON array inputs to an empty NSArray.
   NSArray *JsonArrayOrEmpty(id value)
   {
     NSArray *normalized = @[];
@@ -58,6 +61,7 @@ namespace mailcart_bridge
     return normalized;
   }
 
+  // #R010: Serialize valid JSON objects into UTF-8 strings with "{}" fallback.
   NSString *SerializeJsonObject(id object)
   {
     NSString *serialized = @"{}";
@@ -77,6 +81,7 @@ namespace mailcart_bridge
     return serialized;
   }
 
+  // #R010: Parse UTF-8 JSON payload text into Foundation JSON objects.
   id ParseJsonObject(const std::string &raw_payload)
   {
     id parsed = nil;

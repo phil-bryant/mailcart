@@ -9,8 +9,8 @@ Design: `NormalizeLimit` returns requested limit unchanged when non-negative, ot
 Tests:
 - R001-T01: Negative search limits coerce to zero while non-negative limits pass through unchanged.
 
-R005  Statement: Store Outlook summary identity and preview fields as immutable summary state.
-Design: `OutlookMailcartSummary` constructor captures message id, subject, and preview; accessors expose stored values.
+R005  Statement: Store Outlook summary identity, preview, and received-at fields as immutable summary state.
+Design: `OutlookMailcartSummary` constructor captures message id/subject/preview/receivedAt; accessors expose stored values.
 Tests:
 - R005-T01: Summary constructor captures id/subject/preview as immutable state exposed via accessors.
 
@@ -44,6 +44,17 @@ Design: `ReadMailcart` calls gateway message fetch, parses payload to `OutlookJs
 Tests:
 - R035-T01: `ReadMailcart` fetches and parses a message payload before constructing the entity.
 
+R040  Statement: Store search-result summaries, pagination cursor, and error message as immutable result state exposed through read-only accessors.
+Design: `OutlookSearchResult` constructor moves `summaries`/`next_cursor`/`error_message` into members, and `summaries()`/`nextCursor()`/`errorMessage()` return const references.
+Tests:
+- R040-T01: Search-result state stores summaries/cursor/error and exposes them through read-only accessors.
+
+R045  Statement: Paginate search via cursor markers and surface next-cursor and error markers from parsed objects.
+Design: `SearchMailcartsPage` normalizes the limit, rewrites cursor requests as `"__cursor__"+cursor`, and routes `__nextCursor`/`__error` marker objects into result metadata while mapping data objects into summaries.
+Tests:
+- R045-T01: Cursor searches rewrite query and surface `__nextCursor`/`__error` markers into result metadata.
+
 ## Changelog
 
 - 2026-05-06: Initial reverse-engineered requirements for `cpp_core/src/outlook_client.cpp`.
+- 2026-06-06: Added R040/R045 and broadened R005 to include received-at accessors and cursor-page metadata behavior.

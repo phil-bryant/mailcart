@@ -30,6 +30,7 @@ namespace mailcart_bridge
       return normalized_token == nil ? @"" : normalized_token;
     }
 
+    // #R015: Resolve the OAuth cache file path under the user's home directory.
     NSString *GraphTokenCachePath()
     {
       const char *home_value = std::getenv("HOME");
@@ -40,6 +41,7 @@ namespace mailcart_bridge
       return [NSString stringWithFormat:@"%s/.cache/mailcart/graph_oauth.json", home_value];
     }
 
+    // #R015: Load and validate an access token from the OAuth cache file.
     NSString *TokenFromCacheFile()
     {
       NSString *cache_path = GraphTokenCachePath();
@@ -251,6 +253,7 @@ namespace mailcart_bridge
     return response_payload;
   }
 
+  // #R015: Perform authenticated Graph JSON GET requests with token resolution.
   NSString *FetchGraphGet(NSString *url_text)
   {
     NSString *response_payload = @"{}";
@@ -268,6 +271,7 @@ namespace mailcart_bridge
     return response_payload;
   }
 
+  // #R040: Normalize attachment names to a safe basename with fallback.
   NSString *NormalizedAttachmentFileName(NSString *name)
   {
     NSString *normalized_name = @"attachment.bin";
@@ -283,6 +287,7 @@ namespace mailcart_bridge
 
   namespace
   {
+    // #R035: Extract a pagination cursor from "__cursor__" query markers.
     NSString *ExtractCursorFromQuery(std::string query)
     {
       NSString *cursor = @"";
@@ -388,6 +393,7 @@ namespace mailcart_bridge
 
   namespace
   {
+    // #R045: Build normalized Graph attachment payload rows for a message id.
     NSArray *BuildGraphAttachmentPayload(NSString *message_identifier)
     {
       NSString *token = ResolveGraphToken();
@@ -421,6 +427,7 @@ namespace mailcart_bridge
     }
   } // namespace
 
+  // #R050: Build a deterministic single-message payload with merged attachments.
   std::string BuildGraphMessagePayload(const std::string &message_id)
   {
     NSDictionary *fallback = @{

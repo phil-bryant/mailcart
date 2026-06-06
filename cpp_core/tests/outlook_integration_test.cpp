@@ -7,6 +7,7 @@
 
 class TestMetrics
 { public:
+  // #R001: Initialize aggregate counters for tests and expectations.
   TestMetrics()
     : total_tests_(0),
       failed_tests_(0),
@@ -15,6 +16,7 @@ class TestMetrics
   {
   }
 
+  // #R001: Record one expectation result and increment failure count on false.
   void RecordExpectation(bool passed)
   { total_expectations_ = total_expectations_ + 1;
     if (!passed)
@@ -22,6 +24,7 @@ class TestMetrics
     }
   }
 
+  // #R001: Record one test result and increment failure count on false.
   void RecordTest(bool passed)
   { total_tests_ = total_tests_ + 1;
     if (!passed)
@@ -29,27 +32,33 @@ class TestMetrics
     }
   }
 
+  // #R005: Expose total test count.
   [[nodiscard]] int TotalTests() const
   { return total_tests_;
   }
 
+  // #R005: Expose failed test count.
   [[nodiscard]] int FailedTests() const
   { return failed_tests_;
   }
 
+  // #R005: Expose passed test count derived from totals.
   [[nodiscard]] int PassedTests() const
   { int passed_tests = total_tests_ - failed_tests_;
     return passed_tests;
   }
 
+  // #R005: Expose total expectation count.
   [[nodiscard]] int TotalExpectations() const
   { return total_expectations_;
   }
 
+  // #R005: Expose failed expectation count.
   [[nodiscard]] int FailedExpectations() const
   { return failed_expectations_;
   }
 
+  // #R005: Expose passed expectation count derived from totals.
   [[nodiscard]] int PassedExpectations() const
   { int passed_expectations = total_expectations_ - failed_expectations_;
     return passed_expectations;
@@ -66,13 +75,16 @@ TestMetrics g_test_metrics;
 
 class FakeOutlookGateway : public OutlookServiceGateway
 { public:
+  // #R010: Provide deterministic fake gateway construction.
   FakeOutlookGateway() = default;
 
+  // #R010: Return canned search payload text for deterministic integration checks.
   [[nodiscard]] std::string FetchSearchPayload(std::string query, int limit) const override
   { std::string payload = "search:query=" + query + ";limit=" + std::to_string(limit);
     return payload;
   }
 
+  // #R010: Return canned message payload text for deterministic integration checks.
   [[nodiscard]] std::string FetchMessagePayload(std::string message_id) const override
   { std::string payload = "message:id=" + message_id;
     return payload;
@@ -81,8 +93,10 @@ class FakeOutlookGateway : public OutlookServiceGateway
 
 class FakeOutlookParser : public OutlookPayloadParser
 { public:
+  // #R015: Provide deterministic fake parser construction.
   FakeOutlookParser() = default;
 
+  // #R015: Return canned search objects for deterministic parser behavior.
   [[nodiscard]] std::vector<OutlookJsonObject> ParseSearchPayload(const std::string &raw_payload) const override
   { (void)raw_payload;
     std::vector<OutlookJsonObject> search_results;
@@ -102,6 +116,7 @@ class FakeOutlookParser : public OutlookPayloadParser
     return search_results;
   }
 
+  // #R015: Return canned message object for deterministic parser behavior.
   [[nodiscard]] OutlookJsonObject ParseMessagePayload(const std::string &raw_payload) const override
   { OutlookJsonObject message_object;
     message_object.SetStringField("id", "msg-001");
@@ -121,6 +136,7 @@ class FakeOutlookParser : public OutlookPayloadParser
   }
 };
 
+// #R020: Evaluate and report one expectation outcome.
 bool Expect(const std::string &expectation_name, bool condition)
 { g_test_metrics.RecordExpectation(condition);
   if (condition)
@@ -132,6 +148,7 @@ bool Expect(const std::string &expectation_name, bool condition)
   return condition;
 }
 
+// #R020: Run a named integration test and record pass/fail metrics.
 bool RunIntegrationTest(const std::string &test_name, bool (*test_function)())
 { std::cout << "Running " << test_name << '\n';
   bool passed = test_function();
@@ -145,6 +162,7 @@ bool RunIntegrationTest(const std::string &test_name, bool (*test_function)())
   return passed;
 }
 
+// #R025: Verify MIME detection and normalization robustness.
 bool TestMimeContent()
 { MimeContent html = MimeContent::Html("<p>Hello</p>");
   MimeContent unknown("", "");
@@ -161,6 +179,7 @@ bool TestMimeContent()
   return passed;
 }
 
+// #R025: Verify Mailcart normalization and mutation robustness.
 bool TestMailcartRobustness()
 { Mailcart mailcart("", "", "", "hello");
   mailcart.SetSubject("");
@@ -180,6 +199,7 @@ bool TestMailcartRobustness()
   return passed;
 }
 
+// #R030: Verify OutlookMailcart field population and accessor mapping.
 bool TestOutlookMailcartPopulation()
 { OutlookJsonObject json_object;
   json_object.SetStringField("id", "m-123");
@@ -219,6 +239,7 @@ bool TestOutlookMailcartPopulation()
   return passed;
 }
 
+// #R030: Verify OutlookClient search/read mapping against fake gateway/parser.
 bool TestOutlookClientSearchAndRead()
 { FakeOutlookGateway gateway;
   FakeOutlookParser parser;
@@ -247,6 +268,7 @@ bool TestOutlookClientSearchAndRead()
   return passed;
 }
 
+// #R035: Run all integration checks and return non-zero exit code on any failure.
 int main()
 { bool all_passed = true;
   bool test_passed = RunIntegrationTest("TestMimeContent", TestMimeContent);

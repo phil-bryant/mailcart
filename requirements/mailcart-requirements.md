@@ -19,8 +19,8 @@ Design: The string-body constructor delegates to the MIME constructor using `Mim
 Tests:
 - R010-T01: The string-body constructor delegates to the plain-text MIME constructor.
 
-R015  Statement: Expose sender, recipient, subject, and body through read-only accessors.
-Design: Accessors return references to stored sender/recipient/subject values and `mime_content_.content()` for body.
+R015  Statement: Expose sender, recipient, subject, body, and MIME payload through read-only accessors.
+Design: Accessors return references to stored sender/recipient/subject values, `mime_content_.content()` for body, and `mimeContent()` for MIME state.
 Tests:
 - R015-T01: Sender/recipient/subject/body expose read-only accessors over stored state.
 
@@ -47,3 +47,4 @@ Tests:
 ## Changelog
 
 - 2026-05-06: Initial reverse-engineered requirements for `cpp_core/src/mailcart.cpp`.
+- 2026-06-06: Broadened R015 wording to include the `mimeContent()` accessor.

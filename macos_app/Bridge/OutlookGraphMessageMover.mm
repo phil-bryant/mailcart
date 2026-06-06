@@ -101,6 +101,7 @@ namespace mailcart_bridge
       return response_payload;
     }
 
+    // #R055: Resolve destination folder ids by case-insensitive display-name lookup.
     NSString *FindMailFolderIdByName(NSString *folder_name)
     {
       NSString *folder_id = @"";
@@ -129,6 +130,7 @@ namespace mailcart_bridge
       return folder_id;
     }
 
+    // #R060: Ensure destination folder ids exist, creating folders when missing.
     NSString *EnsureMailFolderId(NSString *folder_name)
     {
       NSString *existing = FindMailFolderIdByName(folder_name);

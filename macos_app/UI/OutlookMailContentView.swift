@@ -190,6 +190,7 @@ struct OutlookMailContentView: View {
         }
     }
 
+    // #R075: Render the default rendered-body mode with HTML-first fallback behavior.
     @ViewBuilder
     private func renderedBodyView(mailcart: OutlookMailcartDTO) -> some View {
         let htmlBody = mailcart.bodyHtml
@@ -206,6 +207,7 @@ struct OutlookMailContentView: View {
         }
     }
 
+    // #R075: Render raw body mode showing underlying HTML/text source content.
     private func rawBodyView(mailcart: OutlookMailcartDTO) -> some View {
         let rawBody = mailcart.bodyHtml.isEmpty ? mailcart.bodyText : mailcart.bodyHtml
         return Text(rawBody)

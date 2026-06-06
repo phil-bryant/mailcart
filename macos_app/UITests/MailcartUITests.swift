@@ -6,6 +6,7 @@ final class MailcartUITests: XCTestCase {
     private var app: XCUIApplication!
     private let timeout: TimeInterval = 5
 
+    // #R001: Resolve the first hittable summary identifier for ordering checks.
     private func firstVisibleSummaryIdentifier() -> String? {
         let predicate = NSPredicate(format: "identifier BEGINSWITH %@", "mailcart.summarySubject.")
         let query = app.descendants(matching: .staticText).matching(predicate)
@@ -19,6 +20,7 @@ final class MailcartUITests: XCTestCase {
         return nil
     }
 
+    // #R001: Launch the app in deterministic UI-testing fixture mode.
     override func setUpWithError() throws {
         continueAfterFailure = false
         app = XCUIApplication()
@@ -28,6 +30,7 @@ final class MailcartUITests: XCTestCase {
         app.launch()
     }
 
+    // #R001: Verify search filtering finds the expected fixture row.
     func testSearchFilterFindsFixtureRow() {
         let searchField = app.textFields["mailcart.searchField"]
         XCTAssertTrue(searchField.waitForExistence(timeout: timeout))
@@ -38,6 +41,7 @@ final class MailcartUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Airline Luggage Fee confirmation"].waitForExistence(timeout: timeout))
     }
 
+    // #R001: Verify load-more appends additional fixture rows.
     func testLoadMoreAppendsFixtureRows() {
         XCTAssertTrue(app.staticTexts["Coffee Roasters weekly update"].waitForExistence(timeout: timeout))
         XCTAssertFalse(app.staticTexts["City Transit Card refill notice"].exists)
@@ -49,6 +53,7 @@ final class MailcartUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["City Transit Card refill notice"].waitForExistence(timeout: timeout))
     }
 
+    // #R001: Verify selecting a summary loads detail metadata.
     func testSelectingSummaryLoadsFixtureDetail() {
         let rowLabel = app.staticTexts["Coffee Roasters weekly update"]
         XCTAssertTrue(rowLabel.waitForExistence(timeout: timeout))
@@ -59,6 +64,7 @@ final class MailcartUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["To: user@example.com"].waitForExistence(timeout: timeout))
     }
 
+    // #R001: Verify sort controls and rendered/raw body modes in one launch.
     func testSortDetailAndBodyModesWorkInSingleLaunch() {
         let loadMoreButton = app.buttons["mailcart.loadMoreButton"]
         XCTAssertTrue(loadMoreButton.waitForExistence(timeout: timeout))
@@ -112,6 +118,7 @@ final class MailcartUITests: XCTestCase {
         XCTAssertTrue(rawHtmlText.waitForExistence(timeout: timeout))
     }
 
+    // #R001: Verify search field accepts direct typing input.
     func testSearchFieldAcceptsTyping() {
         let searchField = app.textFields["mailcart.searchField"]
         XCTAssertTrue(searchField.waitForExistence(timeout: timeout))
@@ -119,12 +126,14 @@ final class MailcartUITests: XCTestCase {
         searchField.typeText("ui-regression-query")
     }
 
+    // #R001: Verify load-more control exists and can be tapped.
     func testLoadMoreButtonExistsAndCanBeTapped() {
         let loadMoreButton = app.buttons["mailcart.loadMoreButton"]
         XCTAssertTrue(loadMoreButton.waitForExistence(timeout: timeout))
         loadMoreButton.click()
     }
 
+    // #R001: Verify summary list is visible in fixture launch mode.
     func testSummaryListIsVisible() {
         let summaryList = app.descendants(matching: .any).matching(identifier: "mailcart.summaryList").firstMatch
         XCTAssertTrue(summaryList.waitForExistence(timeout: timeout))

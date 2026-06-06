@@ -2,7 +2,8 @@
 #include <utility>
 
 namespace
-{ // #R001: Normalize empty MIME content types to application/unknown.
+{
+  // #R001: Normalize empty MIME content types to application/unknown.
   std::string NormalizeContentType(std::string content_type)
   { std::string normalized = std::move(content_type);
     if (normalized.empty())
@@ -17,11 +18,13 @@ MimeContent::MimeContent(std::string content_type, std::string content)
     : content_type_(NormalizeContentType(std::move(content_type))), content_(std::move(content))
 {}
 
+// #R005: Expose normalized content type through a read-only accessor.
 const std::string &MimeContent::contentType() const
 { const std::string &value = content_type_;
   return value;
 }
 
+// #R005: Expose MIME payload through a read-only accessor.
 const std::string &MimeContent::content() const
 { const std::string &value = content_;
   return value;

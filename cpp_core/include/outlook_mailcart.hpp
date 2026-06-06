@@ -35,8 +35,8 @@ class OutlookAttachment
 class OutlookMailcart : public Mailcart
 { public:
   explicit OutlookMailcart(const OutlookJsonObject &json_object) noexcept(false);
-  OutlookMailcart(const OutlookMailcart &other) noexcept(false) = default;
-  OutlookMailcart &operator=(const OutlookMailcart &other) noexcept(false) = default;
+  OutlookMailcart(const OutlookMailcart &other) noexcept(false) = default; // #R001: Defaulted copy constructor is part of the value-type interface.
+  OutlookMailcart &operator=(const OutlookMailcart &other) noexcept(false) = default; // #R001: Defaulted copy assignment preserves value-type semantics.
   [[nodiscard]] const std::string &messageId() const;
   [[nodiscard]] const std::string &receivedAt() const;
   [[nodiscard]] const std::string &bodyText() const;

@@ -8,6 +8,7 @@ import CrashReporter
 enum CrashReporterService {
     private static let storageDirectoryName = "CrashReports"
 
+    // #R001: Start crash reporter lifecycle setup at application launch.
     static func start() {
 #if canImport(CrashReporter)
         guard let crashReporter = makeCrashReporter() else {
@@ -33,6 +34,7 @@ enum CrashReporterService {
     }
 
 #if canImport(CrashReporter)
+    // #R010: Configure PLCrashReporter with mach signal handling and build-specific symbolication.
     private static func makeCrashReporter() -> PLCrashReporter? {
         #if DEBUG
         let symbolicationStrategy: PLCrashReporterSymbolicationStrategy = .all
@@ -63,6 +65,7 @@ enum CrashReporterService {
         }
     }
 
+    // #R005: Write pending crash report artifacts and metadata to disk.
     private static func writeCrashReport(_ data: Data) throws -> URL {
         let outputDirectory = try crashReportDirectory()
         let basename = "crash-\(timestamp())"
@@ -84,6 +87,7 @@ enum CrashReporterService {
         return crashFileURL
     }
 
+    // #R015: Resolve and create the crash report directory under Application Support.
     private static func crashReportDirectory() throws -> URL {
         let appSupportRoot = try FileManager.default.url(
             for: .applicationSupportDirectory,
@@ -100,6 +104,7 @@ enum CrashReporterService {
         return directory
     }
 
+    // #R020: Generate filename-safe ISO8601 timestamps with fractional seconds.
     private static func timestamp() -> String {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]

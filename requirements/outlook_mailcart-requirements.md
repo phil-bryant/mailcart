@@ -34,8 +34,8 @@ Design: `OutlookMailcart` constructor maps sender, recipient, subject, id, and r
 Tests:
 - R025-T01: Entity construction maps JSON sender/recipient/subject/id/receivedAt with empty-string fallbacks.
 
-R030  Statement: Expose Outlook-specific message metadata through read-only accessors.
-Design: `messageId()` and `receivedAt()` return references to stored metadata fields.
+R030  Statement: Expose Outlook-specific message metadata and body/attachment views through read-only accessors.
+Design: `messageId()`/`receivedAt()`/`bodyText()`/`bodyHtml()`/`attachments()` return references to stored Outlook mailcart state.
 Tests:
 - R030-T01: `messageId()` and `receivedAt()` expose stored metadata through read-only accessors.
 
@@ -44,6 +44,22 @@ Design: `type()` returns the literal value `outlook_mailcart`.
 Tests:
 - R035-T01: `type()` reports the stable `outlook_mailcart` identifier.
 
+R040  Statement: Parse a non-negative attachment count from the JSON `attachmentCount` field.
+Design: `ParseAttachmentCount` uses `std::strtol` with full-consume validation and returns zero unless a strictly-positive integer is parsed.
+Tests:
+- R040-T01: Attachment-count parsing uses `strtol` validation and only accepts fully parsed positive integers.
+
+R045  Statement: Build attachment rows from indexed JSON fields up to the parsed attachment count.
+Design: `BuildAttachmentsFromJson` reads indexed `attachmentN{Id,Name,Type,Size}` fields with empty/zero fallbacks and emplaces one `OutlookAttachment` per index.
+Tests:
+- R045-T01: Attachment-row builder reads indexed fields and appends one attachment per parsed index.
+
+R050  Statement: Represent an Outlook attachment as an immutable value type with read-only accessors.
+Design: `OutlookAttachment` stores id/name/contentType/size in the constructor and exposes them through `attachmentId()`/`fileName()`/`contentType()`/`sizeInBytes()`.
+Tests:
+- R050-T01: Attachment ctor/accessors preserve stored id/name/type/size state.
+
 ## Changelog
 
 - 2026-05-06: Initial reverse-engineered requirements for `cpp_core/src/outlook_mailcart.cpp`.
+- 2026-06-06: Added R040/R045/R050 and broadened R030 to include body and attachment accessors.

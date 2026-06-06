@@ -21,6 +21,7 @@ namespace
     return mime_content;
   }
 
+  // #R040: Parse a non-negative attachment count from attachmentCount text.
   int ParseAttachmentCount(const OutlookJsonObject &json_object)
   {
     int attachment_count = 0;
@@ -34,6 +35,7 @@ namespace
     return attachment_count;
   }
 
+  // #R045: Build indexed attachment records from attachmentN* JSON fields.
   std::vector<OutlookAttachment> BuildAttachmentsFromJson(const OutlookJsonObject &json_object)
   {
     std::vector<OutlookAttachment> attachments;
@@ -95,6 +97,7 @@ std::string OutlookJsonObject::stringFieldOrDefault(const std::string &key, std:
   return value;
 }
 
+// #R050: Store attachment identity/name/type/size as immutable attachment state.
 OutlookAttachment::OutlookAttachment(
     std::string attachment_id,
     std::string file_name,
@@ -107,24 +110,28 @@ OutlookAttachment::OutlookAttachment(
 {
 }
 
+// #R050: Expose attachment id through a read-only accessor.
 const std::string &OutlookAttachment::attachmentId() const
 {
   const std::string &value = attachment_id_;
   return value;
 }
 
+// #R050: Expose attachment filename through a read-only accessor.
 const std::string &OutlookAttachment::fileName() const
 {
   const std::string &value = file_name_;
   return value;
 }
 
+// #R050: Expose attachment content type through a read-only accessor.
 const std::string &OutlookAttachment::contentType() const
 {
   const std::string &value = content_type_;
   return value;
 }
 
+// #R050: Expose attachment byte size through a read-only accessor.
 int OutlookAttachment::sizeInBytes() const
 {
   int size_in_bytes = size_in_bytes_;
@@ -153,24 +160,28 @@ const std::string &OutlookMailcart::messageId() const
   return value;
 }
 
+// #R030: Expose received-at timestamp through a read-only accessor.
 const std::string &OutlookMailcart::receivedAt() const
 {
   const std::string &value = received_at_;
   return value;
 }
 
+// #R030: Expose text body through a read-only accessor.
 const std::string &OutlookMailcart::bodyText() const
 {
   const std::string &value = body_text_;
   return value;
 }
 
+// #R030: Expose HTML body through a read-only accessor.
 const std::string &OutlookMailcart::bodyHtml() const
 {
   const std::string &value = body_html_;
   return value;
 }
 
+// #R030: Expose attachments through a read-only accessor.
 const std::vector<OutlookAttachment> &OutlookMailcart::attachments() const
 {
   const std::vector<OutlookAttachment> &value = attachments_;

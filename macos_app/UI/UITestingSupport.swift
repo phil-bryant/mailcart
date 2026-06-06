@@ -36,6 +36,7 @@ func detectMailcartLaunchMode(processInfo: ProcessInfo = .processInfo) -> Mailca
     return .normal
 }
 
+// #R001: Build the default bridge client based on launch mode.
 func buildDefaultOutlookBridgeClient(processInfo: ProcessInfo = .processInfo) -> OutlookBridgeClient {
     switch detectMailcartLaunchMode(processInfo: processInfo) {
     case .normal:
@@ -58,10 +59,12 @@ final class UITestingFixtureBridge: NSObject, OutlookBridgeClient, @unchecked Se
         super.init()
     }
 
+    // #R005: Resolve deterministic fixture page size from environment with fallback.
     private static func resolvedPageSize(_ processInfo: ProcessInfo) -> Int {
         Int(processInfo.environment["MAILCART_UI_TEST_PAGE_SIZE"] ?? "2") ?? 2
     }
 
+    // #R005: Assemble deterministic fixture record collection for UI tests.
     private static func fixtureRecords() -> [FixtureMailcartRecord] {
         [
             fixtureRecord001(),
@@ -71,6 +74,7 @@ final class UITestingFixtureBridge: NSObject, OutlookBridgeClient, @unchecked Se
         ]
     }
 
+    // #R005: Provide first deterministic fixture record.
     private static func fixtureRecord001() -> FixtureMailcartRecord {
         FixtureMailcartRecord(
             messageId: "msg_001",
@@ -88,6 +92,7 @@ final class UITestingFixtureBridge: NSObject, OutlookBridgeClient, @unchecked Se
         )
     }
 
+    // #R005: Provide second deterministic fixture record.
     private static func fixtureRecord002() -> FixtureMailcartRecord {
         FixtureMailcartRecord(
             messageId: "msg_002",
@@ -102,6 +107,7 @@ final class UITestingFixtureBridge: NSObject, OutlookBridgeClient, @unchecked Se
         )
     }
 
+    // #R005: Provide third deterministic fixture record.
     private static func fixtureRecord003() -> FixtureMailcartRecord {
         FixtureMailcartRecord(
             messageId: "msg_003",
@@ -116,6 +122,7 @@ final class UITestingFixtureBridge: NSObject, OutlookBridgeClient, @unchecked Se
         )
     }
 
+    // #R005: Provide fourth deterministic fixture record.
     private static func fixtureRecord004() -> FixtureMailcartRecord {
         FixtureMailcartRecord(
             messageId: "msg_004",
@@ -133,6 +140,7 @@ final class UITestingFixtureBridge: NSObject, OutlookBridgeClient, @unchecked Se
         )
     }
 
+    // #R005: Search deterministic fixture records with cursor-based paging.
     func searchMailcarts(withQuery query: String, limit: Int, cursor: String) -> OutlookSearchResultDTO {
         let normalizedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         let filtered = records.filter { record in
@@ -156,6 +164,7 @@ final class UITestingFixtureBridge: NSObject, OutlookBridgeClient, @unchecked Se
         return OutlookSearchResultDTO(summaries: summaries, nextCursor: nextCursor, errorMessage: "")
     }
 
+    // #R005: Read deterministic fixture mailcart details by message id.
     func readMailcart(withMessageId messageId: String) -> OutlookMailcartDTO {
         let fallback = records.first ?? FixtureMailcartRecord(
             messageId: messageId,
@@ -182,6 +191,7 @@ final class UITestingFixtureBridge: NSObject, OutlookBridgeClient, @unchecked Se
         )
     }
 
+    // #R005: Open deterministic fixture attachments by matching message and attachment ids.
     func openAttachment(withMessageId messageId: String, attachmentId: String, fileName: String) -> Bool {
         records.contains { $0.messageId == messageId && $0.attachments.contains { $0.attachmentId == attachmentId } }
     }

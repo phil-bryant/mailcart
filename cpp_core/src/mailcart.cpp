@@ -3,7 +3,8 @@
 #include <utility>
 
 namespace
-{ // #R001: Normalize empty sender and recipient addresses.
+{
+  // #R001: Normalize empty sender and recipient addresses.
   std::string NormalizeAddress(std::string address)
   { std::string normalized = std::move(address);
     if (normalized.empty())
@@ -28,6 +29,7 @@ Mailcart::Mailcart(std::string sender, std::string recipient, std::string subjec
           std::move(sender), std::move(recipient), std::move(subject), MimeContent::PlainText(std::move(body)))
 {}
 
+// #R001: Normalize sender/recipient/subject when constructing from MIME payloads.
 Mailcart::Mailcart(std::string sender, std::string recipient, std::string subject, MimeContent mime_content)
     : sender_(NormalizeAddress(std::move(sender))),
       recipient_(NormalizeAddress(std::move(recipient))),
@@ -43,16 +45,19 @@ const std::string &Mailcart::sender() const
   return value;
 }
 
+// #R015: Expose recipient through a read-only accessor.
 const std::string &Mailcart::recipient() const
 { const std::string &value = recipient_;
   return value;
 }
 
+// #R015: Expose subject through a read-only accessor.
 const std::string &Mailcart::subject() const
 { const std::string &value = subject_;
   return value;
 }
 
+// #R015: Expose body through a read-only accessor.
 const std::string &Mailcart::body() const
 { const std::string &value = mime_content_.content();
   return value;
@@ -68,6 +73,7 @@ void Mailcart::SetBody(std::string body)
 { mime_content_ = MimeContent::PlainText(std::move(body));
 }
 
+// #R015: Expose MIME content through a read-only accessor.
 const MimeContent &Mailcart::mimeContent() const
 { const MimeContent &value = mime_content_;
   return value;

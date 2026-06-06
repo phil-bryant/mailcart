@@ -57,16 +57,19 @@ final class OutlookMailViewModel: ObservableObject {
         scheduleSearch(isInitialLoad: true)
     }
 
+    // #R015: Accept external query updates and schedule a debounced search.
     func updateQuery(_ value: String) {
         query = value
         scheduleSearch(isInitialLoad: false)
     }
 
+    // #R085: Update mailbox sort mode and re-apply ordering.
     func updateSortOption(_ value: MailSortOption) {
         sortOption = value
         applySortToSummaries()
     }
 
+    // #R035: Load the selected mailcart details by message id through the bridge.
     func loadMailcart(messageId: String) {
         latestMessageLoadGeneration += 1
         let generation = latestMessageLoadGeneration
@@ -109,6 +112,7 @@ final class OutlookMailViewModel: ObservableObject {
         }
     }
 
+    // #R055: Cancel superseded search tasks and debounce non-initial queries.
     private func scheduleSearch(isInitialLoad: Bool) {
         latestSearchGeneration += 1
         let generation = latestSearchGeneration
@@ -128,6 +132,7 @@ final class OutlookMailViewModel: ObservableObject {
         }
     }
 
+    // #R060: Fetch a bridge page and map summaries/cursor/error into published state.
     private func fetchPage(cursor: String, appendResults: Bool, generation: Int) async {
         let queryAtRequestTime = query
         let result = await searchMailcartsFromBridge(query: queryAtRequestTime, cursor: cursor)
@@ -180,6 +185,7 @@ final class OutlookMailViewModel: ObservableObject {
         return message
     }
 
+    // #R095: Normalize bridge errors into actionable user-facing guidance.
     private func normalizedBridgeErrorMessage(_ bridgeError: String) -> String {
         let authIndicators = ["InvalidAuthenticationToken", "Missing OUTLOOK_GRAPH_TOKEN", "Graph returned HTTP 401"]
         let isAuthError = authIndicators.contains { bridgeError.localizedCaseInsensitiveContains($0) }
@@ -189,6 +195,7 @@ final class OutlookMailViewModel: ObservableObject {
         return bridgeError
     }
 
+    // #R060: Execute bridge search calls off-main and return DTO results.
     private func searchMailcartsFromBridge(query: String, cursor: String) async -> OutlookSearchResultDTO {
         let bridge = self.bridge
         return await withCheckedContinuation { continuation in
@@ -199,6 +206,7 @@ final class OutlookMailViewModel: ObservableObject {
         }
     }
 
+    // #R060: Execute bridge read calls off-main and return DTO results.
     private func readMailcartFromBridge(messageId: String) async -> OutlookMailcartDTO {
         let bridge = self.bridge
         return await withCheckedContinuation { continuation in

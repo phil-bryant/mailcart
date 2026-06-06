@@ -17,6 +17,8 @@ namespace mailcart_bridge
     NSString *folder_name;
   };
 
+  // #R055: Resolve destination folder ids by display-name lookup before move operations.
+  // #R060: Ensure destination folders exist by creating them when lookup misses.
   // #R050: Move a Graph message into a destination folder using the typed move request struct.
   BOOL MoveMessageToFolder(const MoveMessageRequest &request);
 } // namespace mailcart_bridge

@@ -7,6 +7,7 @@
 
 using namespace mailcart_bridge;
 
+// #R035: Parse Graph search payload objects into summary/cursor/error markers.
 std::vector<OutlookJsonObject> BridgeOutlookParser::ParseSearchPayload(const std::string &raw_payload) const
 {
   std::vector<OutlookJsonObject> parsed_results;

@@ -44,6 +44,7 @@ def _normalize_token(token: str) -> str:
     return normalized
 
 
+#R030: Decode JWT exp claims into epoch timestamps, returning None for malformed tokens.
 def jwt_expires_at(access_token: str) -> int | None:
     try:
         parts = access_token.split(".")
@@ -63,6 +64,7 @@ def jwt_expires_at(access_token: str) -> int | None:
         return None
 
 
+#R032: Resolve and normalize Graph credential fields from 1Password CLI.
 def _read_psa_field(item: str, field: str) -> str:
     psa_path = shutil.which("1psa")
     if not psa_path:
@@ -88,11 +90,13 @@ class TokenSession:
     expires_at: int
     client_id: str
 
+    #R034: Treat sessions as valid only when access token is present beyond refresh buffer.
     def is_valid(self, buffer_seconds: int = REFRESH_BUFFER_SECONDS) -> bool:
         if not self.access_token:
             return False
         return self.expires_at > int(time.time()) + buffer_seconds
 
+    #R036: Serialize token session fields into cache payload dictionaries.
     def to_dict(self) -> dict[str, Any]:
         return {
             "access_token": self.access_token,
@@ -102,6 +106,7 @@ class TokenSession:
         }
 
     @classmethod
+    #R036: Deserialize token session dictionaries with normalization/coercion.
     def from_dict(cls, payload: dict[str, Any]) -> TokenSession:
         return cls(
             access_token=_normalize_token(str(payload.get("access_token", ""))),
@@ -112,13 +117,16 @@ class TokenSession:
 
 
 class GraphTokenManager:
+    #R038: Initialize token manager with configurable cache path and in-memory session state.
     def __init__(self, cache_path: Path | None = None) -> None:
         self.cache_path = cache_path or DEFAULT_CACHE_PATH
         self._session: TokenSession | None = None
 
+    #R038: Invalidate in-memory token session state.
     def invalidate(self) -> None:
         self._session = None
 
+    #R040: Report token health metadata from current cache/session state.
     def token_status(self) -> dict[str, str]:
         try:
             session = self.load()
@@ -133,6 +141,7 @@ class GraphTokenManager:
             return {"token_status": _STATUS_EXPIRED, "token_expires_at": str(session.expires_at)}
         return {"token_status": _STATUS_MISSING_REFRESH_TOKEN}
 
+    #R042: Load a valid session from memory, cache, bootstrap, or refresh fallback.
     def load(self) -> TokenSession:
         if self._session is not None and self._session.is_valid():
             return self._session
@@ -155,6 +164,7 @@ class GraphTokenManager:
 
         raise GraphTokenError("OUTLOOK_GRAPH_TOKEN or refresh_token is required")
 
+    #R044: Return a valid access token, forcing refresh when loaded session is expired.
     def get_access_token(self) -> str:
         session = self.load()
         if session.is_valid():
@@ -225,6 +235,7 @@ class GraphTokenManager:
             if os.path.exists(temp_path):
                 os.unlink(temp_path)
 
+    #R032: Resolve Graph client id from env first, then 1Password fallback.
     def _client_id(self) -> str:
         env_value = os.environ.get("OUTLOOK_GRAPH_CLIENT_ID", "").strip()
         if env_value:
@@ -234,6 +245,7 @@ class GraphTokenManager:
         except GraphTokenError:
             return ""
 
+    #R046: Read and validate cached OAuth session payloads from disk.
     def _read_cache(self) -> TokenSession | None:
         if not self.cache_path.exists():
             return None
@@ -250,6 +262,7 @@ class GraphTokenManager:
             session.client_id = self._client_id()
         return session
 
+    #R048: Bootstrap token session from env, cache, and 1Password sources.
     def _bootstrap_session(self, cached: TokenSession | None) -> TokenSession:
         env_token = _normalize_token(os.environ.get("OUTLOOK_GRAPH_TOKEN", ""))
         access_token = env_token
@@ -280,26 +293,32 @@ class GraphTokenManager:
             client_id=client_id,
         )
 
+    #R052: Resolve configured 1Password item name with default fallback.
     def _psa_item(self) -> str:
         return os.environ.get("OUTLOOK_GRAPH_TOKEN_PSA_ITEM", DEFAULT_PSA_ITEM).strip() or DEFAULT_PSA_ITEM
 
+    #R052: Resolve configured 1Password access-token field name with default fallback.
     def _psa_access_field(self) -> str:
         return os.environ.get("OUTLOOK_GRAPH_TOKEN_PSA_FIELD", DEFAULT_PSA_FIELD).strip() or DEFAULT_PSA_FIELD
 
+    #R052: Resolve configured 1Password refresh-token field name with default fallback.
     def _psa_refresh_field(self) -> str:
         field = os.environ.get("OUTLOOK_GRAPH_TOKEN_PSA_REFRESH_FIELD", DEFAULT_PSA_REFRESH_FIELD).strip()
         return field or DEFAULT_PSA_REFRESH_FIELD
 
+    #R052: Resolve configured 1Password client-id field name with default fallback.
     def _psa_client_id_field(self) -> str:
         field = os.environ.get("OUTLOOK_GRAPH_TOKEN_PSA_CLIENT_ID_FIELD", DEFAULT_PSA_CLIENT_ID_FIELD).strip()
         return field or DEFAULT_PSA_CLIENT_ID_FIELD
 
+    #R032: Resolve access token from 1Password, degrading safely on lookup failures.
     def _access_token_from_psa(self) -> str:
         try:
             return _read_psa_field(self._psa_item(), self._psa_access_field())
         except GraphTokenError:
             return ""
 
+    #R032: Resolve refresh token from 1Password, degrading safely on lookup failures.
     def _refresh_token_from_psa(self) -> str:
         try:
             return _read_psa_field(self._psa_item(), self._psa_refresh_field())
@@ -310,5 +329,6 @@ class GraphTokenManager:
 _DEFAULT_MANAGER = GraphTokenManager()
 
 
+#R054: Return the process-wide default Graph token manager singleton.
 def get_manager() -> GraphTokenManager:
     return _DEFAULT_MANAGER

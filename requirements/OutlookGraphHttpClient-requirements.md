@@ -31,7 +31,28 @@ Design: Search payload builder serializes filtered Graph results using only `id`
 Tests:
 - R030-T01: Search summaries serialize only `id`/`subject`/`preview` fields and omit body/sender/recipient data.
 
+R035  Statement: Extract pagination cursors from `__cursor__`-prefixed search query markers.
+Design: `ExtractCursorFromQuery` converts query text to `NSString` and returns the substring following `kCursorPrefix` when present.
+Tests:
+- R035-T01: Cursor extraction recognizes `__cursor__`-prefixed queries and returns the suffix cursor value.
+
+R040  Statement: Normalize attachment file names to a safe basename with deterministic fallback.
+Design: `NormalizedAttachmentFileName` trims whitespace, replaces slash/backslash path separators, and falls back to `attachment.bin` when name input is empty.
+Tests:
+- R040-T01: Attachment filename normalization falls back to `attachment.bin` and replaces path separators with underscores.
+
+R045  Statement: Build normalized Graph attachment payload arrays for message-read responses.
+Design: `BuildGraphAttachmentPayload` fetches `/messages/{id}/attachments` and maps each record into id/name/contentType/size dictionaries with safe defaults.
+Tests:
+- R045-T01: Attachment payload builder fetches message attachments and normalizes id/name/contentType/size fields.
+
+R050  Statement: Build deterministic single-message payloads merged with normalized attachments.
+Design: `BuildGraphMessagePayload` seeds a fallback payload shape, fetches selected message fields from Graph, and merges `BuildGraphAttachmentPayload` results into `attachments`.
+Tests:
+- R050-T01: Message payload builder emits fallback shape and merges normalized attachments into fetched message dictionaries.
+
 ## Changelog
 
 - 2026-06-05: Extracted from the monolithic Bridge requirements doc; owns token resolution, GET transport, and the
   search/message payload builders (R015/R020/R025/R030).
+- 2026-06-06: Added R035/R040/R045/R050 for cursor extraction, attachment normalization/building, and merged message payload behavior.

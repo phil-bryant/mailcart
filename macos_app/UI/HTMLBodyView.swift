@@ -5,10 +5,12 @@ import WebKit
 struct HTMLBodyView: NSViewRepresentable {
     let html: String
 
+    // #R001: Build coordinator state for webview HTML change tracking.
     func makeCoordinator() -> Coordinator {
         Coordinator()
     }
 
+    // #R001: Create and configure WKWebView for wrapped HTML rendering.
     func makeNSView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
         let webView = WKWebView(frame: .zero, configuration: configuration)
@@ -19,6 +21,7 @@ struct HTMLBodyView: NSViewRepresentable {
         return webView
     }
 
+    // #R001: Reload HTML only when wrapped HTML content changes.
     func updateNSView(_ nsView: WKWebView, context: Context) {
         if context.coordinator.lastHTML != html {
             nsView.loadHTMLString(wrappedHTML(html), baseURL: nil)
@@ -26,6 +29,7 @@ struct HTMLBodyView: NSViewRepresentable {
         }
     }
 
+    // #R001: Wrap supplied body HTML in a deterministic document shell.
     private func wrappedHTML(_ body: String) -> String {
         """
         <!doctype html>
