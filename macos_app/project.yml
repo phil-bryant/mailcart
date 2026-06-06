@@ -36,6 +36,19 @@ targets:
           - include/outlook_mailcart.hpp
           - src/outlook_client.cpp
           - include/outlook_client.hpp
+  MailcartTests:
+    type: bundle.unit-test
+    platform: macOS
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.local.outlookmailapp.MailcartTests
+        INFOPLIST_FILE: Tests/MailcartTests-Info.plist
+        TEST_HOST: ""
+        BUNDLE_LOADER: ""
+        SWIFT_OBJC_BRIDGING_HEADER: ""
+    sources:
+      - path: Tests
+      - path: UI/MailcartLaunchMode.swift
   MailcartUITests:
     type: bundle.ui-testing
     platform: macOS

@@ -633,11 +633,14 @@ EOF
   [[ "${output}" == *"❌ clam scan completed with findings or failures."* ]]
 }
 
-@test "R005: test target runs C++ integration and all shell tests" {
-  #R005-T01: test lane compiles C++ integration binary and runs all shell BATS tests.
+@test "R005,R110: test target runs C++ integration, Python, Swift unit, and shell tests" {
+  #R005-T01: test lane compiles C++ integration, runs Python and Swift unit tests, then runs shell BATS tests.
+  #R110-T01: test lane invokes xcodebuild test for the MailcartTests unit-test scheme.
   create_compiler_stub
   create_python3_stub
+  create_xcode_stubs
   create_bats_stub
+  mkdir -p "${SANDBOX}/macos_app/Mailcart.xcodeproj"
   mkdir -p "${SANDBOX}/tests/sh"
   mkdir -p "${SANDBOX}/tests/python"
   : > "${SANDBOX}/tests/sh/mailcart.bats"
@@ -650,6 +653,8 @@ EOF
   run rg "clang\+\+ -std=c\+\+17" "${TEST_LOG}"
   [ "$status" -eq 0 ]
   run rg "^python3 -m unittest discover -s tests/python -p test_\\*\\.py$" "${TEST_LOG}"
+  [ "$status" -eq 0 ]
+  run rg "^xcodebuild +test +-project +macos_app/Mailcart.xcodeproj +-scheme +MailcartTests +-only-testing:MailcartTests +-destination +platform=macOS +-derivedDataPath +\\.build/ui/DerivedDataUnitTests$" "${TEST_LOG}"
   [ "$status" -eq 0 ]
   run rg "bats +tests/sh/Bridge.bats tests/sh/UI.bats tests/sh/mailcart.bats" "${TEST_LOG}"
   [ "$status" -eq 0 ]

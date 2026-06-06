@@ -23,19 +23,6 @@ private struct FixtureMailcartRecord {
     let attachments: [OutlookAttachmentDTO]
 }
 
-enum MailcartAppLaunchMode {
-    case normal
-    case uiTesting
-}
-
-// #R001: Launch mode detection selects the UI-testing fixture bridge via --ui-testing or MAILCART_UI_TEST_MODE.
-func detectMailcartLaunchMode(processInfo: ProcessInfo = .processInfo) -> MailcartAppLaunchMode {
-    if processInfo.arguments.contains("--ui-testing") || processInfo.environment["MAILCART_UI_TEST_MODE"] == "1" {
-        return .uiTesting
-    }
-    return .normal
-}
-
 // #R001: Build the default bridge client based on launch mode.
 func buildDefaultOutlookBridgeClient(processInfo: ProcessInfo = .processInfo) -> OutlookBridgeClient {
     switch detectMailcartLaunchMode(processInfo: processInfo) {

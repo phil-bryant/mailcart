@@ -10,9 +10,9 @@ Tests:
 - R001-T01: help target lists all consolidated developer targets with descriptions.
 
 R005  Statement: Run repository tests through the primary test lane.
-Design: `make test` compiles and executes the C++ integration test binary, then runs all shell tests under `tests/sh` including `UI.bats`.
+Design: `make test` compiles and executes the C++ integration test binary, runs Python API unit tests, executes the macOS Swift unit-test suite via `xcodebuild test` (`MailcartTests`), then runs all shell tests under `tests/sh` including `UI.bats`.
 Tests:
-- R005-T01: test lane compiles C++ integration binary and runs all shell BATS tests.
+- R005-T01: test lane compiles C++ integration, runs Python and Swift unit tests, then runs shell BATS tests.
 
 R010  Statement: Include bridge compilation validation in the default build lane.
 Design: `make build` executes bridge compilation checks for Objective-C and Objective-C++ bridge sources into local object files under `.build/` via `xcrun`.
@@ -129,6 +129,11 @@ Design: `make verify-macos-crash-reporter` aliases to `crash-reporter-smoke` and
 Tests:
 - R100-T01: alias targets delegate to the crash reporter and Matchy API script lanes.
 
+R110  Statement: Execute macOS Swift unit tests through a dedicated `make test` sub-lane.
+Design: `_swift-unit-tests` validates project availability and `xcodebuild` presence, prepares dedicated DerivedData, then runs `xcodebuild test` against `MailcartTests` with `-only-testing:MailcartTests` and configurable `UNITTEST_*` overrides.
+Tests:
+- R110-T01: test lane invokes `xcodebuild test` for the `MailcartTests` unit-test scheme.
+
 R085  Statement: Print a per-tool header before each blocking SAST tool execution.
 Design: `make sast` emits manifold/piston-style boxed per-tool headers before each tool lane (`ShellCheck`, `Semgrep`, `Bandit`, `detect-secrets`, `gitleaks`), including `Security Tool:` title and tool documentation URL, before invoking the corresponding `_sast_*` target.
 Tests:
@@ -167,3 +172,4 @@ Tests:
 - 2026-05-13: Replaced ad-hoc runtime automation lane with Teller-style XCUITest `xcodebuild test` lane in `make ui-test`.
 - 2026-05-13: Extended `make clean` requirements to remove `default.profraw` profiling artifacts.
 - 2026-05-27: Updated `make run-api` requirements to include TLS bootstrap orchestration and HTTPS environment propagation.
+- 2026-06-06: Added macOS Swift unit-test execution (`MailcartTests`) to `make test` via dedicated `_swift-unit-tests` lane.

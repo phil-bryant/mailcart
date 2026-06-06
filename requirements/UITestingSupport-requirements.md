@@ -5,7 +5,7 @@
 Applies to `macos_app/UI/UITestingSupport.swift`.
 
 R001  Statement: Select an in-memory fixture bridge when the app launches in automated fixture mode.
-Design: `detectMailcartLaunchMode` returns `.uiTesting` when `--ui-testing` is passed or `MAILCART_UI_TEST_MODE` is set, and `buildDefaultOutlookBridgeClient` returns a `UITestingFixtureBridge` in that mode and `OutlookClientBridge` otherwise.
+Design: `buildDefaultOutlookBridgeClient` dispatches by launch mode and returns a `UITestingFixtureBridge` for fixture mode and `OutlookClientBridge` otherwise.
 Tests:
 - R001-T01: Launch-mode detection and the bridge factory route fixture-mode launches to the fixture bridge.
 

@@ -10,6 +10,10 @@ XCUITEST_PROJECT ?= $(PROJECT_FILE)
 XCUITEST_SCHEME ?= MailcartUITests
 XCUITEST_DESTINATION ?= platform=macOS
 XCUITEST_DERIVED_DATA_PATH ?= $(UI_BUILD_DIR)/DerivedDataUITests
+UNITTEST_PROJECT ?= $(PROJECT_FILE)
+UNITTEST_SCHEME ?= MailcartTests
+UNITTEST_DESTINATION ?= platform=macOS
+UNITTEST_DERIVED_DATA_PATH ?= $(UI_BUILD_DIR)/DerivedDataUnitTests
 BUILD_DESTINATION ?= platform=macOS,arch=arm64
 SAST_REPORT_DIR ?= reports/sast
 APP_BUNDLE := $(DERIVED_DATA)/Build/Products/$(CONFIGURATION)/$(APP_NAME).app
@@ -25,7 +29,7 @@ MAILCART_MATCHY_TLS_KEY_FILE ?= $(MAILCART_MATCHY_TLS_DIR)/matchy-localhost-key.
 
 .PHONY: help build test ui-test run run-ui crash crash-reporter-smoke \
 	sast lint clam clean \
-	_cpp-test _bridge-check _ui-typecheck _ui-build _ui-rebuild _shell-tests _python-tests _ui-regression _ui-xcuitests _ui-smoke \
+	_cpp-test _bridge-check _ui-typecheck _ui-build _ui-rebuild _shell-tests _python-tests _swift-unit-tests _ui-regression _ui-xcuitests _ui-smoke \
 	_sast_shell _sast_semgrep _sast_bandit _sast_detect_secrets _sast_clang_tidy _sast_secrets \
 	_lint_swiftlint _lint_python_equivalent \
 	verify-macos-crash-reporter run-api
@@ -37,7 +41,7 @@ help:
 	@echo "  make clam    - Run Clam AntiVirus recursive scan for this repository"
 	@echo "  make build   - Build bridge checks, UI typecheck, and app binary"
 	@echo "  make sast    - Run SAST (ShellCheck, Semgrep, Bandit, detect-secrets, gitleaks)"
-	@echo "  make test    - Run C++ integration, Python API, and shell BATS tests"
+	@echo "  make test    - Run C++ integration, Python API, Swift unit, and shell BATS tests"
 	@echo "  make ui-test - Run inline + XCUITest UI regressions and app smoke launch check"
 	@echo "  make crash   - Verify PLCrashReporter crash capture and replay flow"
 	@echo "  make run-ui  - Build and launch macOS app"
@@ -51,8 +55,8 @@ help:
 #R025: Build lane rebuilds app deterministically when binary is missing.
 build: _bridge-check _ui-typecheck _ui-build
 
-#R005: Run C++ integration plus full shell BATS regression coverage.
-test: _cpp-test _python-tests _shell-tests
+#R005: Run C++ integration, Python API checks, Swift unit suite, and shell BATS regression coverage.
+test: _cpp-test _python-tests _swift-unit-tests _shell-tests
 
 #R035: Run UI-focused test lane.
 ui-test: _ui-build
@@ -243,6 +247,25 @@ _shell-tests:
 _python-tests:
 	@python3 -m unittest discover -s tests/python -p 'test_*.py'
 
+#R110: Execute the macOS XCTest unit suite for app and bridge-facing Swift surfaces.
+_swift-unit-tests:
+	@if [ ! -d "$(UNITTEST_PROJECT)" ]; then \
+		echo "❌ Unit test project not found at $(UNITTEST_PROJECT)"; \
+		exit 1; \
+	fi
+	@if ! command -v xcodebuild >/dev/null 2>&1; then \
+		echo "❌ xcodebuild is required for macOS Swift unit tests."; \
+		exit 1; \
+	fi
+	@mkdir -p "$(UNITTEST_DERIVED_DATA_PATH)"
+	@xattr -dr com.apple.quarantine "$(UNITTEST_DERIVED_DATA_PATH)" >/dev/null 2>&1 || true
+	@xcodebuild test \
+		-project "$(UNITTEST_PROJECT)" \
+		-scheme "$(UNITTEST_SCHEME)" \
+		-only-testing:MailcartTests \
+		-destination "$(UNITTEST_DESTINATION)" \
+		-derivedDataPath "$(UNITTEST_DERIVED_DATA_PATH)"
+
 _ui-regression:
 	@printf '%s\n' \
 		'from pathlib import Path' \
@@ -355,6 +378,7 @@ _ui-typecheck:
 		"macos_app/UI/OutlookMailApp.swift" \
 		"macos_app/UI/CrashReporterService.swift" \
 		"macos_app/UI/HTMLBodyView.swift" \
+		"macos_app/UI/MailcartLaunchMode.swift" \
 		"macos_app/UI/UITestingSupport.swift" \
 		"macos_app/UI/OutlookMailContentView.swift" \
 		"macos_app/UI/OutlookMailViewModel.swift" \
@@ -375,6 +399,7 @@ _ui-build:
 			macos_app/UI/OutlookMailApp.swift \
 			macos_app/UI/CrashReporterService.swift \
 			macos_app/UI/HTMLBodyView.swift \
+			macos_app/UI/MailcartLaunchMode.swift \
 			macos_app/UI/UITestingSupport.swift \
 			macos_app/UI/OutlookMailContentView.swift \
 			macos_app/UI/OutlookMailViewModel.swift \
