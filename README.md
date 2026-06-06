@@ -2,6 +2,21 @@
 
 This project can run against live Outlook mail when `make run` can resolve a valid Microsoft Graph bearer token from `1psa`.
 
+## Pre-release CI/CD Policy
+
+CI is **implemented but intentionally disabled for automatic runs** until the `v1.0` customer release. A GitHub
+Actions workflow exists at `.github/workflows/ci.yml`, but it is **manual-dispatch-only**
+(`on: workflow_dispatch`) — it does **not** trigger on `push`, `pull_request`, or `schedule`. Pre-release, the
+enforcement mechanism is the local numbered test lanes (`tests/tNN_*.sh` + `./05_run_all_tests_parallel.sh`),
+not GitHub-hosted CI: this is a solo project and red X's on every push are noise rather than signal. mailcart is
+primarily a native macOS Swift/ObjC++ app, so the workflow runs only the Linux-portable Python subset (code
+quality `t00` Python lane + Python unit `t06` + requirements traceability `t04`, delegating to the shared
+`runner` goldens); the C++ integration (`t08`), Swift build (`t09`), macOS UI regression (`t12`), crash (`t13`),
+FileVault (`t14`), and DAST (`t11`) lanes cannot run on a Linux runner and stay local. The shell/Bats lane
+(`t05`) is also excluded for now until its hardcoded `/Users/phil/...` paths are made portable. The workflow is
+kept correct and manually runnable so it can be wired to `push`/`pull_request` as the project approaches `v1.0`.
+This matches the workspace-wide policy in [`teller`'s README](../teller/README.md#pre-release-cicd-policy).
+
 ## Prerequisites
 
 1. Run bootstrap once:
@@ -179,6 +194,23 @@ Recommended local verification sequence:
 4. `make ui-test`
 
 If CI is added later, use the same sequence to keep local and CI checks aligned.
+
+## Dependency Lockfile (hash-pinned)
+
+`requirements.txt` is a hash-pinned lockfile compiled from the `requirements.in` source manifest, mirroring
+[`teller`'s mechanism](../teller/README.md). The shared loader (`runner/src/scripts/load_requirements_generic.sh`,
+reached via `./03_load_requirements.sh`) auto-detects the `--hash` lines and installs with
+`pip install --require-hashes` for supply-chain integrity.
+
+To refresh the lock after editing `requirements.in`:
+
+```
+pip-compile --generate-hashes --output-file=./requirements.txt ./requirements.in
+```
+
+Pin direct dependencies in `requirements.in`; `pip-compile` resolves transitive packages and records SHA-256
+hashes for every artifact. Validate the result with
+`python -m pip install --require-hashes --dry-run -r requirements.txt` (or by re-running `./03_load_requirements.sh`).
 
 ## Troubleshooting
 
