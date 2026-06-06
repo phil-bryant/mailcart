@@ -62,13 +62,14 @@ EOF
 }
 
 @test "R001: script enforces strict fail-fast mode" {
-  #R001
+  #R001-T01: Script declares strict fail-fast mode (set -euo pipefail).
   run rg "set -euo pipefail" "${SCRIPT_PATH}"
   [ "$status" -eq 0 ]
 }
 
 @test "R025,R030: script fails clearly when build step fails" {
-  #R025 #R030
+  #R025-T01: Script runs make _ui-build and fails with guidance when the build step fails.
+  #R030-T01: Script fails clearly when required tooling or the app executable is unavailable.
   create_make_failure_stub
   create_app_success_flow_stub
   run env PATH="${STUB_BIN}:/usr/bin:/bin" MAKE_LOG="${MAKE_LOG}" APP_EXECUTABLE="${APP_PATH}" CRASH_REPORT_DIR="${REPORT_DIR}" STARTUP_WAIT_SECONDS=1 bash "${SCRIPT_PATH}"
@@ -77,7 +78,7 @@ EOF
 }
 
 @test "R010: script fails when forced-crash launch exits zero" {
-  #R010
+  #R010-T01: Script fails when the forced-crash launch exits zero.
   create_make_success_stub
   create_app_force_crash_bad_stub
   run env PATH="${STUB_BIN}:/usr/bin:/bin" MAKE_LOG="${MAKE_LOG}" APP_EXECUTABLE="${APP_PATH}" CRASH_REPORT_DIR="${REPORT_DIR}" STARTUP_WAIT_SECONDS=1 bash "${SCRIPT_PATH}"
@@ -86,7 +87,13 @@ EOF
 }
 
 @test "R005,R015,R020,R025,R030,R035,R040: script verifies crash persistence via fresh artifacts and logs" {
-  #R005 #R015 #R020 #R025 #R030 #R035 #R040
+  #R005-T01: Script runs repository-relative commands from repo root regardless of caller directory.
+  #R015-T01: Script marks crash persistence observed from logs or fresh artifacts.
+  #R020-T01: Script requires fresh .plcrash and .json artifacts newer than the run marker.
+  #R025-T01: Script runs make _ui-build and fails with guidance when the build step fails.
+  #R030-T01: Script fails clearly when required tooling or the app executable is unavailable.
+  #R035-T01: Successful verification prints a success banner with persisted artifact paths.
+  #R040-T01: Script honors APP_EXECUTABLE, CRASH_REPORT_DIR, and STARTUP_WAIT_SECONDS overrides.
   create_make_success_stub
   create_app_success_flow_stub
   run env PATH="${STUB_BIN}:/usr/bin:/bin" MAKE_LOG="${MAKE_LOG}" APP_EXECUTABLE="${APP_PATH}" CRASH_REPORT_DIR="${REPORT_DIR}" STARTUP_WAIT_SECONDS=2 bash "${SCRIPT_PATH}"

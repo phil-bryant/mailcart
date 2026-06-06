@@ -8,7 +8,7 @@ setup() {
 }
 
 @test "R005: bridge DTO models are immutable copies with init disallowed" {
-  #R005
+  #R005-T01: DTO models declare immutable copied properties through designated initializers with init made unavailable.
   run rg -F "@interface OutlookMailcartSummaryDTO : NSObject" "${MODELS_H}"
   [ "$status" -eq 0 ]
   run rg -F "@interface OutlookMailcartDTO : NSObject" "${MODELS_H}"

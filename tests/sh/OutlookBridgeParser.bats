@@ -8,7 +8,7 @@ setup() {
 }
 
 @test "R035: parser maps Graph sender and recipient through emailAddress fields" {
-  #R035
+  #R035-T01: Message reads map sender/recipient via Graph emailAddress.address fields with empty-field fallback for unknown ids.
   run rg -F 'sender_object[@"emailAddress"]' "${PARSER_MM}"
   [ "$status" -eq 0 ]
   run rg -F 'first_recipient[@"emailAddress"]' "${PARSER_MM}"

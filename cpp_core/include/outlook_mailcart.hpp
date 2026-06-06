@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <vector>
 
+// #R001: Declare the Outlook mailcart interface (JSON object wrapper, attachment value type, and the OutlookMailcart entity with metadata accessors and type() override).
 class OutlookJsonObject
 { public:
   OutlookJsonObject();

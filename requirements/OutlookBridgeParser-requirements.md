@@ -11,8 +11,7 @@ splits body content by `contentType` into text/html, expands attachment records,
 requested-id-plus-empty-field shape when the payload is empty. `ParseSearchPayload` deserializes the pre-filtered
 summary payload built by the Graph HTTP client.
 Tests:
-- Read a known Graph id and verify DTO field mapping including sender/recipient email addresses.
-- Read an unknown/unavailable id and verify the returned message preserves empty values for non-id fields.
+- R035-T01: Message reads map sender/recipient via Graph `emailAddress.address` fields with empty-field fallback for unknown ids.
 
 ## Changelog
 

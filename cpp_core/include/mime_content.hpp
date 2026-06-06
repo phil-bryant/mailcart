@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 
+// #R001: Declare the MimeContent value type interface (content-type/content constructor, read-only accessors, plain-text/HTML predicates, mutators, and PlainText/Html factories).
 class MimeContent
 { public:
   MimeContent(std::string content_type, std::string content);

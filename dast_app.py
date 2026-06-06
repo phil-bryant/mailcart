@@ -9,6 +9,7 @@ import sys
 import uvicorn
 
 
+#R005: Resolve host/port/TLS settings from a prioritized list of env var names, falling back to a default.
 def _resolve(names: list[str], default: str) -> str:
     for name in names:
         value = os.environ.get(name, "").strip()
@@ -52,6 +53,7 @@ def main() -> None:
     sys.path.insert(0, str(scripts_dir))
     import matchy_mailcart_api as api  # noqa: PLC0415
 
+    #R001: Serve the mailcart FastAPI app over TLS via uvicorn using the resolved host/port/cert/key.
     uvicorn.run(api.app, host=host, port=port, ssl_certfile=cert, ssl_keyfile=key, log_level="warning")
 
 

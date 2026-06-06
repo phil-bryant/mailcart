@@ -11,22 +11,19 @@ Design: `OutlookClientBridge` declares `searchMailcartsWithQuery:limit:cursor:` 
 `readMailcartWithMessageId:` returning a full mailcart DTO; a `BridgeOutlookGateway` adapter implements
 `FetchSearchPayload`/`FetchMessagePayload` by delegating to the Graph HTTP client unit.
 Tests:
-- Compile Objective-C/Swift interoperability and verify both bridge methods resolve with expected signatures.
-- Verify the gateway exposes `FetchSearchPayload`/`FetchMessagePayload` overrides backed by the Graph client.
+- R001-T01: Bridge declares ObjC search/read entrypoints and the gateway exposes `FetchSearchPayload`/`FetchMessagePayload` backed by the Graph client.
 
 R040  Statement: Instantiate and own C++ Outlook client dependencies inside bridge lifecycle.
 Design: Bridge initialization constructs a single `OutlookClient` with bridge gateway/parser implementations and
 retains it through a `std::unique_ptr`.
 Tests:
-- Create bridge instance and verify search/read calls succeed without external dependency injection.
-- Destroy bridge instances repeatedly and verify no lifecycle crashes occur.
+- R040-T01: Bridge constructs and owns a single C++ `OutlookClient` through a `std::unique_ptr` lifecycle.
 
 R045  Statement: Convert C++ domain search/read results into Objective-C DTO arrays and objects.
 Design: Search iterates domain summaries into a mutable Objective-C array then returns an immutable copy; read maps
 domain mailcart fields into `OutlookMailcartDTO` initialization.
 Tests:
-- Verify `searchMailcartsWithQuery:limit:cursor:` returns `NSArray<OutlookMailcartSummaryDTO *>` with expected values.
-- Verify `readMailcartWithMessageId:` returns an `OutlookMailcartDTO` whose properties match C++ domain output.
+- R045-T01: Search maps C++ summaries into an immutable `NSArray<OutlookMailcartSummaryDTO *>` and read maps domain fields into an `OutlookMailcartDTO`.
 
 ## Changelog
 

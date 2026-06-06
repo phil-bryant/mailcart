@@ -11,8 +11,7 @@ Design: `ToNSString` translates `std::string` to UTF-8 `NSString` with an empty-
 normalization helpers (`JsonStringOrEmpty`, `JsonDictionaryOrEmpty`, `JsonArrayOrEmpty`, `SerializeJsonObject`,
 `ParseJsonObject`) build on these conversions for the Graph client and parser units.
 Tests:
-- Pass ASCII and UTF-8 values through both conversion directions and verify semantic equivalence.
-- Provide a string value that yields null UTF-8 extraction and verify empty C++ string fallback.
+- R010-T01: `ToNSString`/`ToStdString` convert between `std::string` and `NSString` with null-safe empty-string fallbacks.
 
 ## Changelog
 

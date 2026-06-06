@@ -9,7 +9,7 @@ setup() {
 }
 
 @test "R001: bridge exposes ObjC search/read entrypoints backed by C++ gateway fetch operations" {
-  #R001
+  #R001-T01: Bridge declares ObjC search/read entrypoints and the gateway exposes FetchSearchPayload/FetchMessagePayload backed by the Graph client.
   run rg -F "searchMailcartsWithQuery:" "${BRIDGE_H}"
   [ "$status" -eq 0 ]
   run rg -F "readMailcartWithMessageId:" "${BRIDGE_H}"
@@ -21,7 +21,7 @@ setup() {
 }
 
 @test "R040: bridge owns its C++ OutlookClient through a std::unique_ptr lifecycle" {
-  #R040
+  #R040-T01: Bridge constructs and owns a single C++ OutlookClient through a std::unique_ptr lifecycle.
   run rg -F "std::unique_ptr<OutlookClient> _client;" "${BRIDGE_MM}"
   [ "$status" -eq 0 ]
   run rg -F "_client = std::make_unique<OutlookClient>(_gateway, _parser);" "${BRIDGE_MM}"
@@ -29,7 +29,7 @@ setup() {
 }
 
 @test "R045: bridge maps C++ results into immutable ObjC DTO arrays and objects" {
-  #R045
+  #R045-T01: Search maps C++ summaries into an immutable NSArray<OutlookMailcartSummaryDTO *> and read maps domain fields into an OutlookMailcartDTO.
   run rg -F "NSMutableArray<OutlookMailcartSummaryDTO *> *result" "${BRIDGE_MM}"
   [ "$status" -eq 0 ]
   run rg -F "NSArray<OutlookMailcartSummaryDTO *> *immutable_result = [result copy];" "${BRIDGE_MM}"

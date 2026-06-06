@@ -388,7 +388,7 @@ EOF
 }
 
 @test "R001: help target documents consolidated workflow targets" {
-  #R001
+  #R001-T01: help target lists all consolidated developer targets with descriptions.
   run_make help
   [ "$status" -eq 0 ]
   [[ "${output}" == *"make lint"* ]]
@@ -404,7 +404,12 @@ EOF
 }
 
 @test "R045,R050,R055,R065,R115,R120: sast runs shell, semgrep, bandit, detect-secrets, and gitleaks" {
-  #R045 #R050 #R055 #R065 #R115 #R120
+  #R045-T01: sast lane runs all _sast_* tools and emits pass/fail summary markers.
+  #R050-T01: _sast_shell scans discovered shell scripts via ShellCheck.
+  #R055-T01: _sast_semgrep runs semgrep scan with auto and .semgrep.yml configs and --error.
+  #R065-T01: _sast_secrets runs gitleaks detect with the expected arguments.
+  #R115-T01: sast runs bandit scoped to first-party scripts with the expected exclusions.
+  #R120-T01: sast runs detect-secrets and fails non-zero on findings.
   create_shellcheck_stub
   create_semgrep_stub
   create_bandit_stub
@@ -438,7 +443,7 @@ EOF
 }
 
 @test "R085: sast prints per-tool headers before each security tool" {
-  #R085
+  #R085-T01: sast prints per-tool Security Tool headers with URLs before each tool.
   create_shellcheck_stub
   create_semgrep_stub
   create_bandit_stub
@@ -463,7 +468,7 @@ EOF
 }
 
 @test "R090: sast prints per-tool running notifications before each security tool" {
-  #R090
+  #R090-T01: sast prints a per-tool running notification before each tool.
   create_shellcheck_stub
   create_semgrep_stub
   create_bandit_stub
@@ -483,7 +488,10 @@ EOF
 }
 
 @test "R060,R070,R125,R126: lint runs blocking clang-tidy checks and emits success marker" {
-  #R060 #R070 #R125 #R126
+  #R060-T01: lint runs blocking clang-tidy and fails on suppressed-warning summaries.
+  #R070-T01: lint runs clang-tidy, SwiftLint, and Ruff and emits pass/fail markers.
+  #R125-T01: lint runs SwiftLint with --strict and the .swiftlint.yml exclusions and fails on warnings.
+  #R126-T01: lint runs ruff check . and treats findings as blocking.
   create_clang_tidy_stub
   create_xcrun_stub
   create_swiftlint_stub
@@ -502,7 +510,7 @@ EOF
 }
 
 @test "R125: lint fails with red X when swiftlint reports warning findings" {
-  #R125
+  #R125-T01: lint runs SwiftLint with --strict and the .swiftlint.yml exclusions and fails on warnings.
   create_clang_tidy_stub
   create_xcrun_stub
   create_swiftlint_stub
@@ -514,7 +522,7 @@ EOF
 }
 
 @test "R125: swiftlint config excludes generated dependency source trees" {
-  #R125
+  #R125-T01: lint runs SwiftLint with --strict and the .swiftlint.yml exclusions and fails on warnings.
   run rg '^excluded:$' "${SANDBOX}/.swiftlint.yml"
   [ "$status" -eq 0 ]
   run rg '^\s*-\s+\.build$' "${SANDBOX}/.swiftlint.yml"
@@ -526,7 +534,8 @@ EOF
 }
 
 @test "R045,R120: sast fails and prints red X when detect-secrets finds secrets" {
-  #R045 #R120
+  #R045-T01: sast lane runs all _sast_* tools and emits pass/fail summary markers.
+  #R120-T01: sast runs detect-secrets and fails non-zero on findings.
   create_shellcheck_stub
   create_semgrep_stub
   create_bandit_stub
@@ -540,7 +549,7 @@ EOF
 }
 
 @test "R135: sast ignores detect-secrets keyword-only findings in Makefile" {
-  #R135
+  #R135-T01: detect-secrets keyword-only Makefile findings are suppressed without failing the lane.
   create_shellcheck_stub
   create_semgrep_stub
   create_bandit_stub
@@ -553,7 +562,7 @@ EOF
 }
 
 @test "R060: lint fails with red X when clang-tidy reports suppressed warnings" {
-  #R060
+  #R060-T01: lint runs blocking clang-tidy and fails on suppressed-warning summaries.
   create_clang_tidy_stub
   create_xcrun_stub
   create_swiftlint_stub
@@ -565,7 +574,7 @@ EOF
 }
 
 @test "R075: clang-tidy uses blocking config for lint lane" {
-  #R075
+  #R075-T01: lint passes --config-file=.clang-tidy to direct and xcrun clang-tidy invocations.
   create_clang_tidy_stub
   create_xcrun_stub
   create_swiftlint_stub
@@ -579,7 +588,7 @@ EOF
 }
 
 @test "R130: make clam runs ClamAV recursively on repository" {
-  #R130
+  #R130-T01: clam target runs clamscan -r . from repository root.
   create_clamscan_stub
   run_make clam
   [ "$status" -eq 0 ]
@@ -590,7 +599,7 @@ EOF
 }
 
 @test "R140: make clam prints red X when infected files are found" {
-  #R140
+  #R140-T01: clam prints pass/fail summary markers keyed to the infected-file count.
   create_clamscan_stub
   run env PATH="${STUB_BIN}:/usr/bin:/bin" CLAMSCAN_STUB_INFECTED_FILES=2 make -C "${SANDBOX}" clam
   [ "$status" -ne 0 ]
@@ -599,7 +608,7 @@ EOF
 }
 
 @test "R005: test target runs C++ integration and all shell tests" {
-  #R005
+  #R005-T01: test lane compiles C++ integration binary and runs all shell BATS tests.
   create_compiler_stub
   create_python3_stub
   create_bats_stub
@@ -621,7 +630,10 @@ EOF
 }
 
 @test "R010,R015,R020,R025: build runs bridge check, typecheck, and app rebuild/reuse flow" {
-  #R010 #R015 #R020 #R025
+  #R010-T01: build lane compiles Objective-C/Objective-C++ bridge sources into .build object files.
+  #R015-T01: build lane runs Swift UI typecheck against app entrypoint/view/view-model sources.
+  #R020-T01: build reuses an existing app executable and rebuilds only when missing.
+  #R025-T01: build rebuild flow regenerates the Xcode project and runs xcodebuild clean build.
   local app_bundle="${SANDBOX}/app/Mailcart.app"
   local app_executable="${app_bundle}/Contents/MacOS/Mailcart"
   create_all_stubs
@@ -657,7 +669,7 @@ EOF
 }
 
 @test "R030: run resolves graph token via 1psa and launches app executable" {
-  #R030
+  #R030-T01: run resolves the graph token via 1psa and launches the app executable with it set.
   local app_bundle="${SANDBOX}/app/Mailcart.app"
   local app_executable="${STUB_BIN}/app-runner"
   create_all_stubs
@@ -675,7 +687,7 @@ EOF
 }
 
 @test "R035: ui-test executes inline UI regression lane and smoke verification" {
-  #R035
+  #R035-T01: ui-test runs inline UI regression checks, XCUITest suite, and smoke launch verification.
   local app_bundle="${SANDBOX}/app/Mailcart.app"
   local app_executable="${app_bundle}/Contents/MacOS/Mailcart"
   create_kill_stub
@@ -717,7 +729,7 @@ EOF
 }
 
 @test "R080: crash-reporter smoke lane is available directly and through ui-test toggle" {
-  #R080
+  #R080-T01: crash-reporter smoke lane is available directly and via the ui-test toggle.
   local app_bundle="${SANDBOX}/app/Mailcart.app"
   local app_executable="${app_bundle}/Contents/MacOS/Mailcart"
   create_kill_stub
@@ -755,7 +767,10 @@ EOF
 }
 
 @test "R095,R100: make exposes script-backed Matchy API and crash lanes" {
-  #R095 #R100 #R030 #R070
+  #R095-T01: run-api provisions TLS materials then runs the Matchy API script.
+  #R100-T01: alias targets delegate to the crash reporter and Matchy API script lanes.
+  #R030-T01: run resolves the graph token via 1psa and launches the app executable with it set.
+  #R070-T01: lint runs clang-tidy, SwiftLint, and Ruff and emits pass/fail markers.
   local app_bundle="${SANDBOX}/app/Mailcart.app"
   local app_executable="${app_bundle}/Contents/MacOS/Mailcart"
   create_python3_stub
@@ -808,7 +823,7 @@ EOF
 }
 
 @test "R040: clean target removes sandbox build outputs, generated project file, and profraw artifact" {
-  #R040
+  #R040-T01: clean removes .build outputs, generated project file, and default.profraw artifact.
   mkdir -p "${SANDBOX}/.build"
   : > "${SANDBOX}/.build/artifact.tmp"
   : > "${SANDBOX}/Generated.xcodeproj"

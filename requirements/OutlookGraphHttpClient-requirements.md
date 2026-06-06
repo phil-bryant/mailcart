@@ -11,30 +11,25 @@ Design: Client prefers a valid access token from the shared cache file, falls ba
 runtime environment, refreshes credentials on Graph HTTP 401 via `scripts/refresh_graph_token.py`, retries once, and
 returns deterministic empty payloads when no token is available.
 Tests:
-- Run with token unset and verify search/read produce deterministic empty-value responses.
-- Run with token set and verify Graph fetch payloads are handed to the parser.
-- Mock Graph 401 and verify refresh-script invocation and single retry behavior.
+- R015-T01: Client resolves the Graph token from cache/`OUTLOOK_GRAPH_TOKEN`, refreshes via `scripts/refresh_graph_token.py` on HTTP 401, and retries once.
 
 R020  Statement: Perform case-insensitive search matching over subject and preview fields.
 Design: Search payload builder normalizes subject/preview/query text and includes entries when the query is empty or
 found in either field.
 Tests:
-- Query with varied letter case and verify equivalent result sets.
-- Query with empty text and verify all fetched messages are eligible before limit trimming.
+- R020-T01: Search builder normalizes subject/preview/query text for case-insensitive matching.
 
 R025  Statement: Enforce non-negative and capped search result limits.
 Design: Search payload builder coerces negative limits to zero and returns at most the requested number of matched
 summaries.
 Tests:
-- Search with a negative limit and verify zero results.
-- Search with a positive limit below available matches and verify truncation to that exact count.
+- R025-T01: Search builder coerces negative limits to zero and caps results at the requested count.
 
 R030  Statement: Return summary-only payload fields in search responses.
 Design: Search payload builder serializes filtered Graph results using only `id`, `subject`, `preview`, and
 `receivedAt` fields, omitting body/sender/recipient data, before parser conversion into summary DTOs.
 Tests:
-- Execute a search and verify each summary result includes message id, subject, and preview values.
-- Verify the search builder omits body/sender/recipient fields from serialized summaries.
+- R030-T01: Search summaries serialize only `id`/`subject`/`preview` fields and omit body/sender/recipient data.
 
 ## Changelog
 

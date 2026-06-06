@@ -10,8 +10,11 @@
 # it fresh and skip the rebuild; test/launch phases remain unserialized.
 #
 # Usage: source this file, then: with_macos_build_lock <command> [args...]
+#R001: Enable a secure umask for any lane that sources the shared build lock.
 umask 007
 
+#R005: Serialize the macOS build critical section with a mkdir-based mutual-exclusion lock,
+# reclaiming a stale lock whose owner PID is no longer running and timing out after a bound.
 with_macos_build_lock() {
   local repo_root="${RUNBOOK_REPO_ROOT:-$PWD}"
   local lock_dir="${repo_root}/.build/.macos-ui-build.lock"
@@ -40,6 +43,7 @@ with_macos_build_lock() {
   # shellcheck disable=SC2064
   trap "rm -rf '${lock_dir}' 2>/dev/null || true" EXIT
 
+  #R010: Run the wrapped command under the lock, then release the lock and propagate its exit status.
   local status=0
   "$@" || status=$?
 

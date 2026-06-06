@@ -13,6 +13,7 @@ from graph_token import GraphTokenError, get_manager  # noqa: E402
 
 
 def main() -> int:
+    #R001: CLI refreshes/validates the shared Graph OAuth cache; --force forces a refresh, otherwise a valid cached token is reused.
     parser = argparse.ArgumentParser(description="Refresh Mailcart Graph OAuth token cache.")
     parser.add_argument("--force", action="store_true", help="Refresh even when the cached token is still valid.")
     args = parser.parse_args()
@@ -25,6 +26,7 @@ def main() -> int:
             manager.refresh(force=True, session=session)
         else:
             manager.get_access_token()
+    #R005: Surface token errors to stderr and exit non-zero so callers can detect refresh failures.
     except GraphTokenError as exc:
         print(str(exc), file=sys.stderr)
         return 1

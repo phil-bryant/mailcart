@@ -17,13 +17,13 @@ setup() {
 }
 
 @test "R001: API operations resolve a Graph access token before issuing requests" {
-  #R001
+  #R001-T01: API operations resolve a Graph access token before issuing requests.
   run rg -F "token = _TOKEN_MANAGER.get_access_token()" "${API}"
   [ "$status" -eq 0 ]
 }
 
 @test "R005: configured tokens are normalized by stripping a leading Bearer prefix" {
-  #R005
+  #R005-T01: Configured tokens are normalized by stripping a leading Bearer prefix.
   run rg -F "def _normalize_token(token: str) -> str:" "${TOKENS}"
   [ "$status" -eq 0 ]
   run rg -F 'if normalized.startswith("Bearer "):' "${TOKENS}"
@@ -33,7 +33,7 @@ setup() {
 }
 
 @test "R010: Graph headers include Authorization, Accept, and Content-Type" {
-  #R010
+  #R010-T01: Graph headers include Authorization, Accept, and Content-Type.
   run rg -F '"Authorization": f"Bearer {token}",' "${API}"
   [ "$status" -eq 0 ]
   run rg -F '"Accept": "application/json",' "${API}"
@@ -43,7 +43,7 @@ setup() {
 }
 
 @test "R015: header construction fails clearly when the token cannot be resolved" {
-  #R015
+  #R015-T01: Header construction fails clearly when the token cannot be resolved.
   run rg -F "except GraphTokenError as exc:" "${API}"
   [ "$status" -eq 0 ]
   run rg -F 'detail="Graph access token is unavailable."' "${API}"
@@ -51,7 +51,7 @@ setup() {
 }
 
 @test "R020: scoped search applies AND semantics and rejects unscoped tokens with HTTP 400" {
-  #R020
+  #R020-T01: Scoped search applies AND semantics and rejects unsupported/unscoped tokens with HTTP 400.
   run rg -F "def _message_matches_criteria(" "${API}"
   [ "$status" -eq 0 ]
   run rg -F 'detail="Invalid query: unsupported or unscoped token content detected.",' "${API}"
@@ -59,7 +59,7 @@ setup() {
 }
 
 @test "R025: move resolves the destination folder by name, creating it when absent" {
-  #R025
+  #R025-T01: Move resolves the destination folder by name, creating it when absent.
   run rg -F "def _get_or_create_folder_id(folder_name: str) -> str:" "${API}"
   [ "$status" -eq 0 ]
   run rg -F 'if str(row.get("displayName", "")).lower() == folder_name.lower():' "${API}"
@@ -69,7 +69,7 @@ setup() {
 }
 
 @test "R026: token manager refreshes via the Microsoft token endpoint" {
-  #R026
+  #R026-T01: Token manager refreshes via the Microsoft token endpoint.
   run rg -F 'TOKEN_ENDPOINT = "https://login.microsoftonline.com/common/oauth2/v2.0/token"' "${TOKENS}"
   [ "$status" -eq 0 ]
   run rg -F "def refresh(self, force: bool = False, session: TokenSession | None = None) -> TokenSession:" "${TOKENS}"
@@ -77,7 +77,7 @@ setup() {
 }
 
 @test "R027: Graph requests retry once after a 401 by force-refreshing the token" {
-  #R027
+  #R027-T01: Graph requests retry once after a 401 by force-refreshing the token.
   run rg -F "for attempt in range(2):" "${API}"
   [ "$status" -eq 0 ]
   run rg -F "if attempt == 0 and _is_auth_failure(response.status_code, response.text):" "${API}"
@@ -89,7 +89,7 @@ setup() {
 }
 
 @test "R028: refreshed sessions persist to the shared cache with restrictive permissions" {
-  #R028
+  #R028-T01: Refreshed sessions persist to the shared cache with restrictive permissions.
   run rg -F 'DEFAULT_CACHE_PATH = Path.home() / ".cache" / "mailcart" / "graph_oauth.json"' "${TOKENS}"
   [ "$status" -eq 0 ]
   run rg -F "def persist(self, session: TokenSession | None = None) -> None:" "${TOKENS}"
@@ -99,7 +99,7 @@ setup() {
 }
 
 @test "R029: health endpoint surfaces token status metadata" {
-  #R029
+  #R029-T01: Health endpoint surfaces token status metadata.
   run rg -F '@app.get("/health")' "${API}"
   [ "$status" -eq 0 ]
   run rg -F "status.update(_TOKEN_MANAGER.token_status())" "${API}"
@@ -107,7 +107,7 @@ setup() {
 }
 
 @test "R030: Graph auth failures surface a 502 detail instead of empty results" {
-  #R030
+  #R030-T01: Graph auth failures surface a 502 detail instead of empty results.
   run rg -F "status_code=502" "${API}"
   [ "$status" -eq 0 ]
   run rg -F "#R030:" "${API}"
@@ -115,7 +115,7 @@ setup() {
 }
 
 @test "R035: single-message endpoint selects body/recipients and rejects blank ids" {
-  #R035
+  #R035-T01: Single-message endpoint selects body/recipients/metadata and rejects blank ids with HTTP 400.
   run rg -F '@app.get("/v1/messages/{message_id}")' "${API}"
   [ "$status" -eq 0 ]
   run rg -F "toRecipients" "${API}"
@@ -125,7 +125,7 @@ setup() {
 }
 
 @test "R040: API starts over HTTPS-only uvicorn with TLS cert/key on 127.0.0.1:8788" {
-  #R040
+  #R040-T01: API starts over HTTPS-only uvicorn with TLS cert/key on 127.0.0.1:8788.
   run rg -F "uvicorn.run(app, host=API_HOST, port=API_PORT, ssl_certfile=tls_cert_file, ssl_keyfile=tls_key_file)" "${API}"
   [ "$status" -eq 0 ]
   run rg -F "API_PORT = 8788" "${API}"
@@ -133,7 +133,7 @@ setup() {
 }
 
 @test "R045: startup fails fast when required TLS materials are missing" {
-  #R045
+  #R045-T01: Startup fails fast when required TLS materials are missing.
   run rg -F "def _resolve_tls_materials() -> tuple[str, str]:" "${API}"
   [ "$status" -eq 0 ]
   run rg -F "is required and must point to an existing certificate file" "${API}"
@@ -143,7 +143,7 @@ setup() {
 }
 
 @test "R050: scoped text filters match via a single-pass Aho-Corasick automaton" {
-  #R050
+  #R050-T01: Scoped text filters match via a single-pass Aho-Corasick automaton.
   run rg -F "class AhoCorasick:" "${API}"
   [ "$status" -eq 0 ]
   run rg -F "def _build_failure_links(self) -> None:" "${API}"

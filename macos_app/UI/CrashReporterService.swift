@@ -4,6 +4,7 @@ import Foundation
 import CrashReporter
 #endif
 
+// #R001: CrashReporterService exposes a static start() entrypoint that installs PLCrashReporter at launch.
 enum CrashReporterService {
     private static let storageDirectoryName = "CrashReports"
 
@@ -46,6 +47,7 @@ enum CrashReporterService {
         return PLCrashReporter(configuration: config)
     }
 
+    // #R005: A pending crash report is loaded, written to disk, and purged on the next launch.
     private static func persistPendingCrashReportIfPresent(_ crashReporter: PLCrashReporter) {
         guard crashReporter.hasPendingCrashReport() else {
             return

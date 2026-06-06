@@ -1,0 +1,25 @@
+# t07 run mutation tests Wrapper Requirements
+
+## Scope
+
+Applies to `tests/t07_run_mutation_tests.sh`.
+
+R001  Statement: Pointer runs with secure umask and strict shell mode via the shared shim.
+Design: Source `pointer_shim.sh`, which sets `umask 007` and `set -euo pipefail` before delegation.
+Tests:
+- R001-T01: Verify the pointer sources `pointer_shim.sh`.
+
+R005  Statement: Pointer resolves runner and repo roots through the shared shim.
+Design: The sourced `pointer_shim.sh` resolves `RUNNER_HOME` and `RUNBOOK_REPO_ROOT`; the pointer locates the shim under `runner/src/scripts`.
+Tests:
+- R005-T01: Verify the pointer locates the shim under `runner/src/scripts`.
+
+R010  Statement: Pointer selects its runbook profile explicitly before delegation.
+Design: Call `select_runbook_profile "mailcart"` so the shim sources `runner/config/runbook/mailcart.env` and exports `RUNBOOK_REPO_ROOT`.
+Tests:
+- R010-T01: Verify the pointer selects its runbook profile via `select_runbook_profile "mailcart"`.
+
+R015  Statement: Pointer delegates execution to the mapped runner golden.
+Design: Call `delegate_golden "tests/t07_run_mutation_tests.sh" "$@"` so the shim execs `${RUNNER_HOME}/tests/t07_run_mutation_tests.sh` with arguments passed through unchanged.
+Tests:
+- R015-T01: Verify the pointer calls `delegate_golden "tests/t07_run_mutation_tests.sh"` with `"$@"`.

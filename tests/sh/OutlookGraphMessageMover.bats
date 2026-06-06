@@ -9,7 +9,7 @@ setup() {
 }
 
 @test "R050: mover keeps clang-tidy swappable-parameter-safe typed request structs" {
-  #R050
+  #R050-T01: Header defines GraphRequestHeaders/MoveMessageRequest typed structs consumed by FetchGraphRequestData/MoveMessageToFolder to avoid swappable-parameter SAST regressions.
   run rg -F "struct GraphRequestHeaders" "${MOVER_H}"
   [ "$status" -eq 0 ]
   run rg -F "NSData *FetchGraphRequestData(" "${MOVER_MM}"

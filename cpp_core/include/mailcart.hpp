@@ -2,6 +2,7 @@
 #include "mime_content.hpp"
 #include <string>
 
+// #R001: Declare the Mailcart entity interface (constructors, read-only accessors, normalized mutators, and type()).
 class Mailcart
 { public:
   Mailcart(std::string sender, std::string recipient, std::string subject, std::string body);

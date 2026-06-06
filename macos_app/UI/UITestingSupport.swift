@@ -28,6 +28,7 @@ enum MailcartAppLaunchMode {
     case uiTesting
 }
 
+// #R001: Launch mode detection selects the UI-testing fixture bridge via --ui-testing or MAILCART_UI_TEST_MODE.
 func detectMailcartLaunchMode(processInfo: ProcessInfo = .processInfo) -> MailcartAppLaunchMode {
     if processInfo.arguments.contains("--ui-testing") || processInfo.environment["MAILCART_UI_TEST_MODE"] == "1" {
         return .uiTesting
@@ -44,6 +45,7 @@ func buildDefaultOutlookBridgeClient(processInfo: ProcessInfo = .processInfo) ->
     }
 }
 
+// #R005: UITestingFixtureBridge serves deterministic in-memory mailcart fixtures with cursor pagination.
 final class UITestingFixtureBridge: NSObject, OutlookBridgeClient, @unchecked Sendable {
     var isUITestingFixture: Bool { true }
 

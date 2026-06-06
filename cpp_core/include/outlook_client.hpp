@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 
+// #R001: Declare the Outlook client interface (summary/search-result value types, gateway and parser abstractions, and the OutlookClient search/read operations).
 class OutlookMailcartSummary
 { public:
   OutlookMailcartSummary(std::string message_id, std::string subject, std::string preview, std::string received_at);

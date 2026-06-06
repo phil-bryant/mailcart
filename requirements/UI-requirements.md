@@ -7,123 +7,102 @@ Applies to `macos_app/UI/OutlookMailApp.swift`, `macos_app/UI/OutlookMailContent
 R001  Statement: Launch the macOS Outlook mail experience from a SwiftUI app entrypoint.
 Design: `OutlookMailApp` defines the `@main` app scene as a single `WindowGroup` rooted at `OutlookMailContentView`.
 Tests:
-- Build and launch the macOS target and verify `OutlookMailContentView` is the initial window content.
-- Verify app startup does not require manual scene wiring outside `OutlookMailApp`.
+- R001-T01: `OutlookMailApp` is the `@main` app exposing a single `WindowGroup` rooted at `OutlookMailContentView`.
 
 R005  Statement: Enforce minimum desktop window size suitable for split-mail workflow.
 Design: Root content view applies frame constraints of at least 980 width and 620 height.
 Tests:
-- Launch app and attempt to resize below minimum dimensions; verify minimum size is enforced.
-- Verify initial window opens at or above configured minimum frame.
+- R005-T01: Root content applies a minimum window frame of 980 width and 620 height.
 
 R010  Statement: Present mailbox and message content using split navigation layout.
 Design: `OutlookMailContentView` uses `NavigationSplitView` with list/search in the primary column and selected message detail in the secondary column.
 Tests:
-- Launch app and verify both list and detail regions render within split navigation.
-- Verify navigation title displays `Outlook` on the primary column.
+- R010-T01: `OutlookMailContentView` uses `NavigationSplitView` with the `Outlook` primary navigation title.
 
 R015  Statement: Bind search field edits to view-model query updates.
 Design: Search text field displays `Search Outlook mail` placeholder and uses explicit binding that delegates writes through `viewModel.updateQuery(_:)`.
 Tests:
-- Type into search field and verify `updateQuery(_:)` is invoked with current text.
-- Clear search field text and verify query state updates to empty string.
+- R015-T01: The `Search Outlook mail` field delegates writes through `viewModel.updateQuery(_:)`.
 
 R020  Statement: Surface active search progress in the mailbox column.
 Design: UI conditionally renders `ProgressView("Searching…")` while `viewModel.isSearching` is true.
 Tests:
-- Trigger a query update and verify progress indicator appears during active search task window.
-- Verify progress indicator hides after summaries update and search completes.
+- R020-T01: A `Searching…` `ProgressView` renders while `viewModel.isSearching` is true.
 
 R025  Statement: Render searchable summary results with selectable message identity.
 Design: Primary list binds to `viewModel.summaries`, identifies rows by `messageId`, and tags each row with the same id for selection tracking.
 Tests:
-- Populate summaries and verify list row count matches summary count.
-- Select a row and verify selected id tracks the row `messageId`.
+- R025-T01: The summary list keys on `viewModel.summaries` `messageId` and tags each row by id.
 
 R030  Statement: Display subject and preview hierarchy in summary rows.
 Design: Each summary row shows headline one-line subject and two-line secondary preview styling for scan-friendly mailbox display.
 Tests:
-- Provide long subject/preview values and verify one-line and two-line truncation behavior.
-- Verify preview text uses secondary foreground styling distinct from subject.
+- R030-T01: Summary rows show a one-line subject headline and a two-line secondary preview.
 
 R035  Statement: Load full mailcart content when a non-empty message selection changes.
 Design: Selection change handler maps optional selected id to string and invokes `viewModel.loadMailcart(messageId:)` only when id is non-empty.
 Tests:
-- Select a valid message id and verify detail load is requested for that id.
-- Clear selection and verify no load call occurs for empty id.
+- R035-T01: A non-empty selection change invokes `viewModel.loadMailcart(messageId:)`.
 
 R040  Statement: Render selected mailcart details with readable metadata and body content.
 Design: Detail pane shows subject title plus From/To/Received metadata, divider, and full message body content where rendered mode uses the HTML renderer component for HTML payloads while plain-text payloads remain selectable SwiftUI text.
 Tests:
-- Load a message and verify subject, sender, recipient, timestamp, and body all render with sender/recipient email addresses from bridge payload fields.
-- Verify plain-text body supports text selection interaction.
+- R040-T01: Detail pane renders subject, From/To/Received metadata, and a selection-enabled body.
 
 R045  Statement: Render an empty-state prompt when no mailcart is selected.
 Design: Detail pane displays envelope icon, bold `Select an mailcart` heading, and explanatory guidance while `selectedMailcart` is nil.
 Tests:
-- Launch app before any selection and verify empty-state icon and messaging are visible.
-- Deselect current message and verify detail pane returns to empty-state content.
+- R045-T01: With no selection the detail pane shows the `envelope.open` empty-state prompt.
 
 R050  Statement: Maintain main-actor observable UI state for query, summaries, selected mailcart, and search status.
 Design: `OutlookMailViewModel` is `@MainActor` and publishes mutable `query` plus private-set `summaries`, `selectedMailcart`, `isSearching`, and `errorMessage`.
 Tests:
-- Observe published properties and verify state updates are delivered on main actor.
-- Attempt external mutation of private-set properties and verify access is disallowed.
+- R050-T01: `OutlookMailViewModel` is a `@MainActor` observable with private-set published state.
 
 R055  Statement: Debounce and cancel superseded search requests.
 Design: `scheduleSearch()` cancels prior task, marks searching active, waits 250ms, exits cancelled tasks early, then performs bridge search with `limit: 50`.
 Tests:
-- Enter text rapidly and verify only latest query produces final summaries.
-- Confirm cancelled tasks do not overwrite summaries or searching state after cancellation.
+- R055-T01: `scheduleSearch` cancels prior tasks, waits 250ms, and searches with `limit: 50`.
 
 R060  Statement: Map bridge read/search responses into published UI state.
 Design: `loadMailcart(messageId:)` schedules asynchronous bridge read work and updates `selectedMailcart` when the latest in-flight request completes; completed debounced search assigns returned summaries then clears searching flag.
 Tests:
-- Invoke `loadMailcart(messageId:)` with known id and verify `selectedMailcart` updates to returned DTO.
-- Select different message ids in quick succession and verify stale read responses do not overwrite the latest selection.
-- Complete a search and verify `summaries` updates and `isSearching` becomes false without blocking main-actor UI interactions.
+- R060-T01: Bridge read/search work runs off the main actor and maps results into published UI state.
 
 R065  Statement: Load initial mailbox content automatically when the UI launches.
 Design: `OutlookMailViewModel` schedules an initial search from `init` without requiring search-field input.
 Tests:
-- Launch app and verify mailbox list populates from bridge-backed search without typing a query.
-- Verify initial load still executes when query is empty.
+- R065-T01: The view-model `init` schedules an initial mailbox load via `scheduleSearch(isInitialLoad: true)`.
 
 R070  Statement: Allow users to request additional server-paginated mailcart summaries.
 Design: View-model tracks `nextCursor` from bridge search results, exposes `canLoadMore`, and appends summaries when `Load more emails` is clicked.
 Tests:
-- Perform a search with multi-page backend data and verify clicking `Load more emails` appends additional rows.
-- Verify load-more button disables when no continuation cursor is available.
+- R070-T01: A cursor-backed `Load more emails` action appends summaries when `canLoadMore` is true.
 
 R075  Statement: Provide rendered-vs-raw mailcart body mode with rendered as default.
 Design: Detail pane exposes segmented body mode control defaulted to `Rendered`, showing HTML content via `HTMLBodyView` in rendered mode and raw source in raw mode.
 Tests:
-- Select a mailcart with HTML body and verify default detail body uses the rendered HTML view component.
-- Switch to raw mode and verify raw source body text is shown.
+- R075-T01: Detail body mode defaults to rendered `HTMLBodyView` with a raw-source toggle.
 
 R080  Statement: Display and open all attachments for the selected mailcart.
 Design: Detail pane lists attachment metadata and routes each `Open` action through view-model bridge attachment open API.
 Tests:
-- Select an mailcart with attachments and verify list displays filename/type/size for every attachment.
-- Trigger `Open` on an attachment and verify bridge open handler is invoked with selected message and attachment ids.
+- R080-T01: Detail lists attachment metadata and routes each `Open` action through the bridge.
 
 R085  Statement: Support mailbox sorting by subject or received date.
 Design: Mailbox column exposes segmented sort control and view-model sorts summary list by selected key (`Subject` ascending, `Date received` descending).
 Tests:
-- Switch sort to subject and verify alphabetical subject ordering.
-- Switch sort to date received and verify newest-first ordering.
+- R085-T01: Mailbox sorting orders by subject ascending or received date descending.
 
 R090  Statement: Terminate the app when the user closes the main window.
 Design: App entrypoint configures `NSApplicationDelegate` to return true from `applicationShouldTerminateAfterLastWindowClosed`.
 Tests:
-- Launch app, close the window via red traffic-light button, and verify process exits.
-- Verify app does not linger after window close when started from `make run`.
+- R090-T01: The app delegate terminates the process after the last window closes.
 
 R095  Statement: Surface actionable mailbox error messaging in the UI.
 Design: View-model sets `errorMessage` when token/bootstrap conditions prevent mailbox loading and content view renders the message inline in the mailbox column.
 Tests:
-- Launch without `OUTLOOK_GRAPH_TOKEN` and verify error message is visible.
-- Restore token and verify successful searches clear the blocking error state.
+- R095-T01: The view-model surfaces an actionable mailbox `errorMessage` rendered inline in the UI.
 
 ## Changelog
 

@@ -10,8 +10,7 @@ Design: `OutlookMailcartSummaryDTO` and `OutlookMailcartDTO` (with `OutlookSearc
 expose readonly copied `NSString` properties, materialize values through designated initializers, and disallow
 default initialization via `init NS_UNAVAILABLE`.
 Tests:
-- Instantiate DTOs through designated initializers and verify all properties retain expected values.
-- Attempt `[OutlookMailcartDTO new]` or `[OutlookMailcartSummaryDTO init]` and verify compile-time unavailability.
+- R005-T01: DTO models declare immutable copied properties through designated initializers with `init` made unavailable.
 
 ## Changelog
 

@@ -1,6 +1,7 @@
 import SwiftUI
 import WebKit
 
+// #R001: HTMLBodyView is an NSViewRepresentable that renders message HTML in a WKWebView.
 struct HTMLBodyView: NSViewRepresentable {
     let html: String
 

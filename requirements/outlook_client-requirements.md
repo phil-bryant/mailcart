@@ -7,48 +7,42 @@ Applies to `cpp_core/src/outlook_client.cpp`.
 R001  Statement: Coerce negative search limits to zero before service calls.
 Design: `NormalizeLimit` returns requested limit unchanged when non-negative, otherwise returns zero.
 Tests:
-- Call `SearchMailcarts("q", -1)` with a gateway spy and verify fetch uses limit `0`.
-- Call `SearchMailcarts("q", 25)` and verify fetch uses limit `25`.
+- R001-T01: Negative search limits coerce to zero while non-negative limits pass through unchanged.
 
 R005  Statement: Store Outlook summary identity and preview fields as immutable summary state.
 Design: `OutlookMailcartSummary` constructor captures message id, subject, and preview; accessors expose stored values.
 Tests:
-- Construct `OutlookMailcartSummary("id-1", "Sub", "Prev")` and verify each accessor returns its field.
-- Verify accessor values remain stable across repeated reads.
+- R005-T01: Summary constructor captures id/subject/preview as immutable state exposed via accessors.
 
 R010  Statement: Expose polymorphic cleanup hooks for gateway and parser abstractions.
 Design: `OutlookServiceGateway` and `OutlookPayloadParser` provide out-of-line virtual destructors.
 Tests:
-- Delete derived gateway/parser instances via base pointers and verify no undefined behavior occurs.
+- R010-T01: Gateway and parser abstractions provide out-of-line virtual destructors.
 
 R015  Statement: Bind client operations to injected gateway and parser dependencies.
 Design: `OutlookClient` constructor stores references to gateway and parser for all read/search interactions.
 Tests:
-- Construct client with fake dependencies and verify subsequent calls use the provided fakes.
+- R015-T01: Client constructor binds the injected gateway and parser references.
 
 R020  Statement: Fetch and parse search payloads through gateway-parser pipeline.
 Design: `SearchMailcarts` calls gateway `FetchSearchPayload(query, normalized_limit)` and parses with `ParseSearchPayload`.
 Tests:
-- Instrument gateway/parser fakes and verify both methods are called once per search invocation.
-- Verify parser input equals raw payload returned by gateway.
+- R020-T01: Search fetches the payload via the gateway then parses it through the parser pipeline.
 
 R025  Statement: Map parsed search objects to summary DTOs with default-empty fallback fields.
 Design: For each parsed object, mapping reads `id`, `subject`, and `preview` using `stringFieldOrDefault(..., "")`.
 Tests:
-- Provide parsed objects with all fields and verify mapped summaries match expected values.
-- Omit one or more fields and verify missing values map to empty strings.
+- R025-T01: Parsed objects map to summaries reading id/subject/preview with empty-string fallbacks.
 
 R030  Statement: Preserve parser result ordering and cardinality in search results.
 Design: Search mapping iterates parser output sequentially and appends one summary per parsed object.
 Tests:
-- Return parsed objects in a known order and verify output summary order is identical.
-- Return N parsed objects and verify output vector size equals N.
+- R030-T01: Search mapping preserves parser ordering and one summary per parsed object.
 
 R035  Statement: Fetch and parse message payloads before constructing Outlook mailcart entities.
 Design: `ReadMailcart` calls gateway message fetch, parses payload to `OutlookJsonObject`, and constructs `OutlookMailcart`.
 Tests:
-- Verify `ReadMailcart` passes requested message id to gateway fetch call.
-- Verify parsed message fields are reflected in returned `OutlookMailcart`.
+- R035-T01: `ReadMailcart` fetches and parses a message payload before constructing the entity.
 
 ## Changelog
 

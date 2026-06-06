@@ -12,10 +12,7 @@ structs (`GraphRequestHeaders`, `MoveMessageRequest`) and passing those structs 
 `NSString *` parameters. `FetchGraphRequestData` consumes a `GraphRequestHeaders`, and `MoveMessageToFolder` consumes a
 `MoveMessageRequest`.
 Tests:
-- Verify `OutlookGraphMessageMover.h` defines `GraphRequestHeaders` and `OutlookGraphMessageMover.mm` uses it in
-  `FetchGraphRequestData`.
-- Verify `OutlookGraphMessageMover.h` defines `MoveMessageRequest` and `OutlookGraphMessageMover.mm` uses it in
-  `MoveMessageToFolder`.
+- R050-T01: Header defines `GraphRequestHeaders`/`MoveMessageRequest` typed structs consumed by `FetchGraphRequestData`/`MoveMessageToFolder` to avoid swappable-parameter SAST regressions.
 
 ## Changelog
 

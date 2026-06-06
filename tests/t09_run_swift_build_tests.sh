@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Self-contained mailcart test lane (mailcart-owned; wraps Makefile Swift/ObjC++ build + native static analysis).
+#R001: Run with a secure umask and strict shell mode before any work.
 umask 007
 set -euo pipefail
+#R005: Resolve RUNNER_HOME and RUNBOOK_REPO_ROOT, export RUNBOOK_REPO_ROOT, and source the mailcart runbook env and macOS build lock.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 RUNNER_HOME="$(cd "${SCRIPT_DIR}/../../runner" && pwd -P)"
 RUNBOOK_REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd -P)"
@@ -14,6 +16,7 @@ cd "$RUNBOOK_REPO_ROOT"
 # Compile/typecheck the Swift + ObjC++ surface, then run native-only static analysis
 # (clang-tidy + SwiftLint) that the shared t03 SAST pointer does not exercise.
 # The Xcode build is serialized so parallel macOS lanes don't race on the shared project.
+#R010: Build the Swift/ObjC++ surface under the macOS build lock, then run native static analysis (clang-tidy + SwiftLint).
 with_macos_build_lock make build
 make _sast_clang_tidy
 exec make _lint_swiftlint

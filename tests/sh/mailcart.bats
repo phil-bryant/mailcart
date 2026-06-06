@@ -14,7 +14,7 @@ setup() {
 }
 
 @test "R001: empty sender/recipient addresses normalize to unknown@local" {
-  #R001
+  #R001-T01: Empty sender/recipient addresses normalize to unknown@local while non-empty values are preserved.
   run rg -F "std::string NormalizeAddress(std::string address)" "${SRC}"
   [ "$status" -eq 0 ]
   run rg -F 'normalized = "unknown@local";' "${SRC}"
@@ -22,7 +22,7 @@ setup() {
 }
 
 @test "R005: empty subjects normalize to the (no subject) label" {
-  #R005
+  #R005-T01: Empty subjects normalize to the (no subject) label in constructor and mutator paths.
   run rg -F "std::string NormalizeSubject(std::string subject)" "${SRC}"
   [ "$status" -eq 0 ]
   run rg -F 'normalized = "(no subject)";' "${SRC}"
@@ -30,13 +30,13 @@ setup() {
 }
 
 @test "R010: string-body constructor delegates to the plain-text MIME constructor" {
-  #R010
+  #R010-T01: The string-body constructor delegates to the plain-text MIME constructor.
   run rg -F "MimeContent::PlainText(std::move(body))" "${SRC}"
   [ "$status" -eq 0 ]
 }
 
 @test "R015: sender/recipient/subject/body expose read-only accessors over stored state" {
-  #R015
+  #R015-T01: Sender/recipient/subject/body expose read-only accessors over stored state.
   run rg -F "const std::string &Mailcart::sender() const" "${SRC}"
   [ "$status" -eq 0 ]
   run rg -F "const std::string &Mailcart::recipient() const" "${SRC}"
@@ -48,7 +48,7 @@ setup() {
 }
 
 @test "R020: SetSubject applies subject normalization" {
-  #R020
+  #R020-T01: SetSubject applies subject normalization before assigning stored state.
   run rg -F "void Mailcart::SetSubject(std::string subject)" "${SRC}"
   [ "$status" -eq 0 ]
   run rg -F "subject_ = NormalizeSubject(std::move(subject));" "${SRC}"
@@ -56,7 +56,7 @@ setup() {
 }
 
 @test "R025: SetBody replaces content via plain-text MIME conversion" {
-  #R025
+  #R025-T01: SetBody replaces stored content via plain-text MIME conversion.
   run rg -F "void Mailcart::SetBody(std::string body)" "${SRC}"
   [ "$status" -eq 0 ]
   run rg -F "mime_content_ = MimeContent::PlainText(std::move(body));" "${SRC}"
@@ -64,7 +64,7 @@ setup() {
 }
 
 @test "R030: SetMimeContent moves MIME content without extra normalization" {
-  #R030
+  #R030-T01: SetMimeContent moves MIME content without additional normalization.
   run rg -F "void Mailcart::SetMimeContent(MimeContent mime_content)" "${SRC}"
   [ "$status" -eq 0 ]
   run rg -F "mime_content_ = std::move(mime_content);" "${SRC}"
@@ -72,7 +72,7 @@ setup() {
 }
 
 @test "R035: type() reports the stable mailcart identifier" {
-  #R035
+  #R035-T01: type() reports the stable mailcart identifier.
   run rg -F "std::string Mailcart::type() const" "${SRC}"
   [ "$status" -eq 0 ]
   run rg -F 'std::string base_type("mailcart");' "${SRC}"
