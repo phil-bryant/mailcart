@@ -1,8 +1,8 @@
-# 04 Install Matchy API TLS Wrapper Requirements
+# 05 Install Matchy API TLS Wrapper Requirements
 
 ## Scope
 
-Applies to `04_install_matchy_api_tls.sh`.
+Applies to `05_install_matchy_api_tls.sh`.
 
 R001  Statement: Pointer runs with secure umask and strict shell mode via the shared shim.
 Design: Source `src/scripts/pointer_shim.sh`, which sets `umask 007` and `set -euo pipefail` before delegation.

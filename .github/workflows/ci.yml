@@ -73,7 +73,7 @@ jobs:
         run: |
           ./02_create_venv.sh
           source ./mailcart-venv/bin/activate
-          ./03_load_requirements.sh
+          ./04_load_requirements.sh
 
       - name: Code quality (t00, Python lane)
         working-directory: mailcart

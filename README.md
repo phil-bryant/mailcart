@@ -7,7 +7,7 @@ This project can run against live Outlook mail when `make run` can resolve a val
 CI is **implemented but intentionally disabled for automatic runs** until the `v1.0` customer release. A GitHub
 Actions workflow exists at `.github/workflows/ci.yml`, but it is **manual-dispatch-only**
 (`on: workflow_dispatch`) — it does **not** trigger on `push`, `pull_request`, or `schedule`. Pre-release, the
-enforcement mechanism is the local numbered test lanes (`tests/tNN_*.sh` + `./05_run_all_tests_parallel.sh`),
+enforcement mechanism is the local numbered test lanes (`tests/tNN_*.sh` + `./06_run_all_tests_parallel.sh`),
 not GitHub-hosted CI: this is a solo project and red X's on every push are noise rather than signal. mailcart is
 primarily a native macOS Swift/ObjC++ app, so the workflow runs only the Linux-portable Python subset (code
 quality `t00` Python lane + Python unit `t06` + requirements traceability `t04`, delegating to the shared
@@ -199,7 +199,7 @@ If CI is added later, use the same sequence to keep local and CI checks aligned.
 
 `requirements.txt` is a hash-pinned lockfile compiled from the `requirements.in` source manifest, mirroring
 [`teller`'s mechanism](../teller/README.md). The shared loader (`runner/src/scripts/load_requirements_generic.sh`,
-reached via `./03_load_requirements.sh`) auto-detects the `--hash` lines and installs with
+reached via `./04_load_requirements.sh`) auto-detects the `--hash` lines and installs with
 `pip install --require-hashes` for supply-chain integrity.
 
 To refresh the lock after editing `requirements.in`:
@@ -210,7 +210,7 @@ pip-compile --generate-hashes --output-file=./requirements.txt ./requirements.in
 
 Pin direct dependencies in `requirements.in`; `pip-compile` resolves transitive packages and records SHA-256
 hashes for every artifact. Validate the result with
-`python -m pip install --require-hashes --dry-run -r requirements.txt` (or by re-running `./03_load_requirements.sh`).
+`python -m pip install --require-hashes --dry-run -r requirements.txt` (or by re-running `./04_load_requirements.sh`).
 
 ## Troubleshooting
 
@@ -226,7 +226,7 @@ hashes for every artifact. Validate the result with
   - Cause: caller is using `http://127.0.0.1:8788` against Mailcart's TLS-only endpoint.
   - Fix: switch caller base URL to `https://127.0.0.1:8788` and pass TLS verify with the local cert (`~/.mailcart/matchy-localhost-cert.pem`) or trusted mkcert CA bundle.
 - TLS startup failures for `make run-api`
-  - Run `./04_install_matchy_api_tls.sh` to generate local cert/key material.
+  - Run `./05_install_matchy_api_tls.sh` to generate local cert/key material.
   - Verify `MAILCART_MATCHY_TLS_CERT_FILE` and `MAILCART_MATCHY_TLS_KEY_FILE` point to existing files.
 - `1psa` not found
   - Re-run `./01_install_prerequisites.sh`.
@@ -235,7 +235,7 @@ hashes for every artifact. Validate the result with
 
 To provide Matchy-compatible endpoints for search and move:
 
-- Install local API TLS materials first: `./04_install_matchy_api_tls.sh`
+- Install local API TLS materials first: `./05_install_matchy_api_tls.sh`
 - Run `python3 scripts/matchy_mailcart_api.py`
 - Or run `make run-api`
 - API transport is HTTPS-only on `https://127.0.0.1:8788`

@@ -1,7 +1,7 @@
 #!/usr/bin/env bats
 
 src() {
-  printf '%s' "${BATS_TEST_DIRNAME}/../../04_install_matchy_api_tls.sh"
+  printf '%s' "${BATS_TEST_DIRNAME}/../../03_prepare_supply_chain_integrity.sh"
 }
 
 @test "centralizes umask/strict mode via the shared pointer shim" {
@@ -23,7 +23,7 @@ src() {
 }
 
 @test "delegates to the mapped runner golden" {
-  #R015-T01: Verify the pointer calls delegate_golden with install_api_tls_generic.sh and "$@".
-  run grep 'delegate_golden "src/scripts/install_api_tls_generic.sh" "$@"' "$(src)"
+  #R015-T01: Verify the pointer calls delegate_golden with 03_prepare_supply_chain_integrity.sh and "$@".
+  run grep 'delegate_golden "03_prepare_supply_chain_integrity.sh" "$@"' "$(src)"
   [ "$status" -eq 0 ]
 }

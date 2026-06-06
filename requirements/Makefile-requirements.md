@@ -120,7 +120,7 @@ Tests:
 - R080-T01: crash-reporter smoke lane is available directly and via the ui-test toggle.
 
 R095  Statement: Expose a Matchy API lane through Makefile script entrypoints.
-Design: `make run-api` optionally warms the shared token cache when `OUTLOOK_GRAPH_CLIENT_ID` is set, provisions HTTPS cert/key materials via `./04_install_matchy_api_tls.sh`, exports `MAILCART_REPO_ROOT` plus `MAILCART_MATCHY_TLS_*` path variables, and runs `python3 scripts/matchy_mailcart_api.py`.
+Design: `make run-api` optionally warms the shared token cache when `OUTLOOK_GRAPH_CLIENT_ID` is set, provisions HTTPS cert/key materials via `./05_install_matchy_api_tls.sh`, exports `MAILCART_REPO_ROOT` plus `MAILCART_MATCHY_TLS_*` path variables, and runs `python3 scripts/matchy_mailcart_api.py`.
 Tests:
 - R095-T01: run-api provisions TLS materials then runs the Matchy API script.
 

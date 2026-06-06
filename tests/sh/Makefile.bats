@@ -6,7 +6,7 @@ setup() {
   REPO_ROOT="$(mailcart_repo_root)"
   export REPO_ROOT
   export MAKEFILE_PATH="${REPO_ROOT}/Makefile"
-  export TLS_INSTALLER_PATH="${REPO_ROOT}/04_install_matchy_api_tls.sh"
+  export TLS_INSTALLER_PATH="${REPO_ROOT}/05_install_matchy_api_tls.sh"
   export SWIFTLINT_CONFIG_PATH="${REPO_ROOT}/.swiftlint.yml"
   export TMP_ROOT
   TMP_ROOT="$(mktemp -d)"
@@ -15,9 +15,9 @@ setup() {
   export TEST_LOG="${TMP_ROOT}/commands.log"
   mkdir -p "${SANDBOX}" "${STUB_BIN}"
   cp "${MAKEFILE_PATH}" "${SANDBOX}/Makefile"
-  cp "${TLS_INSTALLER_PATH}" "${SANDBOX}/04_install_matchy_api_tls.sh"
+  cp "${TLS_INSTALLER_PATH}" "${SANDBOX}/05_install_matchy_api_tls.sh"
   cp "${SWIFTLINT_CONFIG_PATH}" "${SANDBOX}/.swiftlint.yml"
-  chmod +x "${SANDBOX}/04_install_matchy_api_tls.sh"
+  chmod +x "${SANDBOX}/05_install_matchy_api_tls.sh"
   : > "${TEST_LOG}"
 }
 
@@ -317,7 +317,7 @@ create_git_ls_files_stub() {
 #!/bin/bash
 if [ "$1" = "ls-files" ]; then
   printf "Makefile\n"
-  printf "05_run_all_tests_parallel.sh\n"
+  printf "06_run_all_tests_parallel.sh\n"
   printf "01_install_prerequisites.sh\n"
   exit 0
 fi
@@ -416,7 +416,7 @@ EOF
   create_detect_secrets_stub
   create_git_ls_files_stub
   create_gitleaks_stub
-  : > "${SANDBOX}/05_run_all_tests_parallel.sh"
+  : > "${SANDBOX}/06_run_all_tests_parallel.sh"
   : > "${SANDBOX}/01_install_prerequisites.sh"
 
   run_make sast
@@ -426,7 +426,7 @@ EOF
   [ "$status" -eq 0 ]
   run rg "\\[01_install_prerequisites.sh\\]" "${TEST_LOG}"
   [ "$status" -eq 0 ]
-  run rg "\\[05_run_all_tests_parallel.sh\\]" "${TEST_LOG}"
+  run rg "\\[06_run_all_tests_parallel.sh\\]" "${TEST_LOG}"
   [ "$status" -eq 0 ]
   run rg "^semgrep +scan --config auto --config \.semgrep.yml --error \.$" "${TEST_LOG}"
   [ "$status" -eq 0 ]
@@ -450,7 +450,7 @@ EOF
   create_detect_secrets_stub
   create_git_ls_files_stub
   create_gitleaks_stub
-  : > "${SANDBOX}/05_run_all_tests_parallel.sh"
+  : > "${SANDBOX}/06_run_all_tests_parallel.sh"
   : > "${SANDBOX}/01_install_prerequisites.sh"
 
   run_make sast
@@ -475,7 +475,7 @@ EOF
   create_detect_secrets_stub
   create_git_ls_files_stub
   create_gitleaks_stub
-  : > "${SANDBOX}/05_run_all_tests_parallel.sh"
+  : > "${SANDBOX}/06_run_all_tests_parallel.sh"
   : > "${SANDBOX}/01_install_prerequisites.sh"
 
   run_make sast
@@ -798,7 +798,7 @@ EOF
 
   run_make run-api
   [ "$status" -eq 0 ]
-  run rg "^bash .+/04_install_matchy_api_tls\.sh$" "${TEST_LOG}" --count
+  run rg "^bash .+/05_install_matchy_api_tls\.sh$" "${TEST_LOG}" --count
   [ "$status" -eq 0 ]
   [ "${output}" = "1" ]
   run rg "^python3 .+/scripts/matchy_mailcart_api\.py$" "${TEST_LOG}" --count

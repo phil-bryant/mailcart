@@ -145,10 +145,10 @@ The `Makefile` is the primary developer interface; numbered scripts are thin run
 | `make run` | Build app, refresh token, read 1psa token, launch macOS app |
 | `make run-api` | Refresh token, ensure TLS, start the FastAPI server on 8788 |
 
-Numbered runbook scripts (`01`-`05`) and `tests/tNN_*` lanes are thin pointers that set
+Numbered runbook scripts (`01`-`06`) and `tests/tNN_*` lanes are thin pointers that set
 `RUNBOOK_REPO_ROOT`, source `runner/config/runbook/mailcart.env`, and exec the corresponding golden in
-[`../runner/`](../runner/). `04_install_matchy_api_tls.sh` generates local TLS material for the HTTPS API, and
-`05_run_all_tests_parallel.sh` delegates to the runner's parallel orchestrator golden.
+[`../runner/`](../runner/). `05_install_matchy_api_tls.sh` generates local TLS material for the HTTPS API, and
+`06_run_all_tests_parallel.sh` delegates to the runner's parallel orchestrator golden.
 
 ## Requirements Traceability
 
