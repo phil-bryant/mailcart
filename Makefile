@@ -29,7 +29,7 @@ MAILCART_MATCHY_TLS_KEY_FILE ?= $(MAILCART_MATCHY_TLS_DIR)/matchy-localhost-key.
 
 .PHONY: help build test ui-test run run-ui crash crash-reporter-smoke \
 	sast lint clam clean \
-	_cpp-test _bridge-check _ui-typecheck _ui-build _ui-rebuild _shell-tests _python-tests _swift-unit-tests _ui-regression _ui-xcuitests _ui-smoke \
+	_cpp-test _graph-replay-test _bridge-check _ui-typecheck _ui-build _ui-rebuild _shell-tests _python-tests _swift-unit-tests _ui-regression _ui-xcuitests _ui-smoke \
 	_sast_shell _sast_semgrep _sast_bandit _sast_detect_secrets _sast_clang_tidy _sast_secrets \
 	_lint_swiftlint _lint_python_equivalent \
 	verify-macos-crash-reporter run-api
@@ -229,6 +229,17 @@ _cpp-test:
 		"cpp_core/src/mailcart.cpp" "cpp_core/src/mime_content.cpp" "cpp_core/src/outlook_mailcart.cpp" "cpp_core/src/outlook_client.cpp" "cpp_core/tests/outlook_integration_test.cpp" \
 		-o ".build/outlook_integration_test"
 	@".build/outlook_integration_test"
+
+_graph-replay-test:
+	@mkdir -p ".build"
+	@xcrun --sdk macosx clang++ -std=c++17 -fobjc-arc -x objective-c++ \
+		-I"cpp_core/include" -I"macos_app/Bridge" \
+		"macos_app/Bridge/OutlookGraphConversions.mm" \
+		"macos_app/Bridge/OutlookGraphHttpClient.mm" \
+		"cpp_core/tests/outlook_graph_replay_test.mm" \
+		-framework Foundation \
+		-o ".build/outlook_graph_replay_test"
+	@MAILCART_REPO_ROOT="$(MAILCART_REPO_ROOT)" ".build/outlook_graph_replay_test"
 
 _shell-tests:
 	@typeset -a SHELL_TESTS; \
@@ -485,7 +496,12 @@ _sast_semgrep:
 		echo "semgrep is required for make sast. Install semgrep to continue."; \
 		exit 1; \
 	fi
-	@semgrep scan --config auto --config ".semgrep.yml" --error .
+	@SEMGREP_CONFIG_PATH="$${SEMGREP_CONFIG_PATH:-config/security/semgrep.yml}"; \
+	if [ ! -f "$$SEMGREP_CONFIG_PATH" ]; then \
+		echo "Semgrep config not found: $$SEMGREP_CONFIG_PATH"; \
+		exit 1; \
+	fi; \
+	semgrep scan --config auto --config "$$SEMGREP_CONFIG_PATH" --error .
 
 #R125: Run SwiftLint as part of blocking make lint lane.
 _lint_swiftlint:
@@ -509,7 +525,7 @@ _sast_bandit:
 		echo "bandit is required for make sast. Install bandit to continue."; \
 		exit 1; \
 	fi
-	@bandit -q -r "scripts" -x "mailcart-venv,.venv,venv,build,dist"
+	@bandit -q -r "scripts" -c "config/security/bandit.yml"
 
 #R120: Run detect-secrets scan and fail when findings exist.
 #R135: Ignore detect-secrets self-referential keyword findings in Makefile.

@@ -199,14 +199,10 @@ class SearchMessagesTests(unittest.TestCase):
         self.assertFalse(api._message_matches_criteria(wrong_merchant, criteria))
         self.assertFalse(api._message_matches_criteria(out_of_window, criteria))
 
-    def test_invalid_or_unscoped_tokens_return_400(self) -> None:
-        #R020-T01: invalid or unscoped tokens return HTTP 400.
-        with self.assertRaises(Exception) as unscoped_ctx:
-            api.search_messages(query="doordash", limit=10)
-        self.assertEqual(getattr(unscoped_ctx.exception, "status_code", None), 400)
-        with self.assertRaises(Exception) as unsupported_ctx:
-            api.search_messages(query="foo:bar", limit=10)
-        self.assertEqual(getattr(unsupported_ctx.exception, "status_code", None), 400)
+    def test_invalid_or_unscoped_tokens_return_empty_results(self) -> None:
+        #R020-T01: invalid or unscoped tokens fail closed to empty results.
+        self.assertEqual(api.search_messages(query="doordash", limit=10), {"messages": []})
+        self.assertEqual(api.search_messages(query="foo:bar", limit=10), {"messages": []})
 
     def test_empty_query_returns_recent_mail(self) -> None:
         #R020: empty query returns recent mail without a Graph date filter.
@@ -249,7 +245,7 @@ class GetMessageEndpointTests(unittest.TestCase):
     def test_get_message_returns_full_body_for_html(self) -> None:
         #R035-T01: single-message fetch returns html_body and recipients.
         payload = {
-            "id": "msg_42",
+            "id": "msg_000042",
             "subject": "Receipt",
             "bodyPreview": "Thanks for your order",
             "body": {"contentType": "html", "content": "<p>Thanks!</p>"},
@@ -261,12 +257,12 @@ class GetMessageEndpointTests(unittest.TestCase):
             "receivedDateTime": "2026-05-17T12:00:00Z",
         }
         with mock.patch.object(api, "_graph_get", return_value=payload) as graph_get:
-            result = api.get_message("msg_42")
+            result = api.get_message("msg_000042")
         graph_get.assert_called_once()
         call_path, call_kwargs = graph_get.call_args.args[0], graph_get.call_args.kwargs
-        self.assertEqual(call_path, "/me/messages/msg_42")
+        self.assertEqual(call_path, "/me/messages/msg_000042")
         self.assertIn("$select", call_kwargs.get("params", {}))
-        self.assertEqual(result["message_id"], "msg_42")
+        self.assertEqual(result["message_id"], "msg_000042")
         self.assertEqual(result["subject"], "Receipt")
         self.assertEqual(result["preview"], "Thanks for your order")
         self.assertEqual(result["sender"], "store@example.com")
@@ -278,7 +274,7 @@ class GetMessageEndpointTests(unittest.TestCase):
     def test_get_message_returns_text_body_for_plain(self) -> None:
         #R035-T01: single-message fetch returns text_body for plain mail.
         payload = {
-            "id": "msg_99",
+            "id": "msg_000099",
             "subject": "Plain",
             "bodyPreview": "preview",
             "body": {"contentType": "text", "content": "hello world"},
@@ -287,17 +283,17 @@ class GetMessageEndpointTests(unittest.TestCase):
             "receivedDateTime": "2026-05-17T12:00:00Z",
         }
         with mock.patch.object(api, "_graph_get", return_value=payload):
-            result = api.get_message("msg_99")
+            result = api.get_message("msg_000099")
         self.assertEqual(result["text_body"], "hello world")
         self.assertEqual(result["html_body"], "")
         self.assertEqual(result["body_text"], "hello world")
         self.assertEqual(result["recipients"], "")
 
     def test_get_message_rejects_blank_id(self) -> None:
-        #R035-T02: single-message fetch rejects blank ids with HTTP 400.
+        #R035-T02: single-message fetch rejects blank ids with HTTP 404.
         with self.assertRaises(Exception) as ctx:
             api.get_message("   ")
-        self.assertEqual(getattr(ctx.exception, "status_code", None), 400)
+        self.assertEqual(getattr(ctx.exception, "status_code", None), 404)
 
 
 class GetMessageRoutingTests(unittest.TestCase):
@@ -547,8 +543,8 @@ class MessageIdEncodingTests(unittest.TestCase):
             api.get_message("abc123==")
         self.assertEqual(graph_get.call_args.args[0], "/me/messages/abc123%3D%3D")
 
-    def test_get_message_url_normalizes_already_encoded_id(self) -> None:
-        #R035-T01: get_message normalizes an already-encoded id.
+    def test_get_message_url_rejects_already_encoded_id(self) -> None:
+        #R035-T01: get_message rejects already percent-encoded ids.
         payload = {
             "id": "abc123==",
             "subject": "",
@@ -559,8 +555,10 @@ class MessageIdEncodingTests(unittest.TestCase):
             "receivedDateTime": "",
         }
         with mock.patch.object(api, "_graph_get", return_value=payload) as graph_get:
-            api.get_message("abc123%3D%3D")
-        self.assertEqual(graph_get.call_args.args[0], "/me/messages/abc123%3D%3D")
+            with self.assertRaises(Exception) as ctx:
+                api.get_message("abc123%3D%3D")
+        self.assertEqual(getattr(ctx.exception, "status_code", None), 404)
+        graph_get.assert_not_called()
 
     def test_move_message_url_encodes_reserved_characters(self) -> None:
         #R025-T01: move_message percent-encodes reserved id characters.

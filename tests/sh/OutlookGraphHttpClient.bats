@@ -89,3 +89,17 @@ setup() {
   run rg -F 'result_dictionary[@"attachments"] = attachments;' "${HTTP_MM}"
   [ "$status" -eq 0 ]
 }
+
+@test "R055: graph client exposes deterministic replay hooks and uses them" {
+  #R055-T01: Hook install/reset APIs exist and request/refresh/token flows consult installed hooks.
+  run rg -F "void InstallGraphTransportHook(GraphSynchronousTransport hook);" "${REPO_ROOT}/macos_app/Bridge/OutlookGraphHttpClient.h"
+  [ "$status" -eq 0 ]
+  run rg -F "void ResetGraphTestHooks();" "${REPO_ROOT}/macos_app/Bridge/OutlookGraphHttpClient.h"
+  [ "$status" -eq 0 ]
+  run rg -F "if (g_graph_transport_hook != nullptr)" "${HTTP_MM}"
+  [ "$status" -eq 0 ]
+  run rg -F "if (g_graph_refresh_hook != nullptr)" "${HTTP_MM}"
+  [ "$status" -eq 0 ]
+  run rg -F "if (g_graph_token_resolver_hook != nullptr)" "${HTTP_MM}"
+  [ "$status" -eq 0 ]
+}

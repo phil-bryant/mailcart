@@ -51,8 +51,14 @@ Design: `BuildGraphMessagePayload` seeds a fallback payload shape, fetches selec
 Tests:
 - R050-T01: Message payload builder emits fallback shape and merges normalized attachments into fetched message dictionaries.
 
+R055  Statement: Graph transport/auth behavior is hookable for deterministic replay harness runs.
+Design: The client exposes `InstallGraphTransportHook`, `InstallGraphRefreshHook`, `InstallGraphTokenResolverHook`, and `ResetGraphTestHooks` so tests can deterministically drive request, refresh, and token-resolution branches without live network dependencies.
+Tests:
+- R055-T01: Verify hook install/reset APIs exist and Graph request/refresh/token paths consult installed hooks.
+
 ## Changelog
 
 - 2026-06-05: Extracted from the monolithic Bridge requirements doc; owns token resolution, GET transport, and the
   search/message payload builders (R015/R020/R025/R030).
 - 2026-06-06: Added R035/R040/R045/R050 for cursor extraction, attachment normalization/building, and merged message payload behavior.
+- 2026-06-07: Added R055 deterministic test hooks for transport, refresh, and token resolution in replay harnesses.

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from collections import deque
 from datetime import date, datetime
+import hmac
 from html import unescape
 import logging
 import os
@@ -22,7 +23,7 @@ from typing import Any
 
 import requests
 import uvicorn
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from pydantic import BaseModel, Field
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -41,6 +42,46 @@ TLS_CERT_ENV = "MAILCART_MATCHY_TLS_CERT_FILE"
 TLS_KEY_ENV = "MAILCART_MATCHY_TLS_KEY_FILE"
 TLS_CERT_DEFAULT = TLS_DIR_DEFAULT / "matchy-localhost-cert.pem"
 TLS_KEY_DEFAULT = TLS_DIR_DEFAULT / "matchy-localhost-key.pem"
+WRITE_TOKEN_HEADER_NAME = os.environ.get("MAILCART_API_WRITE_TOKEN_HEADER", "X-Teller-Write-Token")
+WRITE_TOKEN_ENV_VARS = ("MAILCART_API_WRITE_TOKEN", "TELLER_CLASSIFIER_WRITE_TOKEN")
+
+
+#R620: Resolve the configured caller write-token from supported environment keys.
+def _configured_write_token() -> str:
+    for env_name in WRITE_TOKEN_ENV_VARS:
+        value = os.environ.get(env_name, "").strip()
+        if value:
+            return value
+    return ""
+
+
+#R620: Validate caller-provided write-token using constant-time comparison.
+def _is_valid_write_token(provided_token: str | None) -> bool:
+    configured_token = _configured_write_token()
+    if not configured_token:
+        return False
+    candidate = (provided_token or "").strip()
+    return bool(candidate) and hmac.compare_digest(candidate, configured_token)
+
+
+#R620: Require caller-facing write-token auth for all message API routes.
+def _require_api_write_token(
+    provided_token: str | None = Header(default=None, alias=WRITE_TOKEN_HEADER_NAME),
+) -> None:
+    if not _configured_write_token():
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Mailcart API write token is not configured. Set MAILCART_API_WRITE_TOKEN "
+                "or TELLER_CLASSIFIER_WRITE_TOKEN."
+            ),
+        )
+    if not _is_valid_write_token(provided_token):
+        raise HTTPException(
+            status_code=401,
+            detail="Unauthorized",
+            headers={"WWW-Authenticate": WRITE_TOKEN_HEADER_NAME},
+        )
 
 
 #R600: Classify Graph responses as auth failures (HTTP 401 or known invalid-token bodies) to gate retry/refresh.
@@ -368,6 +409,16 @@ def _get_or_create_folder_id(folder_name: str) -> str:
     return folder_id
 
 
+#R035: Validate message ids before Graph calls to fail closed on malformed fuzz inputs.
+def _validated_graph_message_id(message_id: str) -> str:
+    normalized = message_id.strip()
+    if len(normalized) < 8:
+        raise HTTPException(status_code=404, detail="message not found")
+    if not re.fullmatch(r"[A-Za-z0-9._:/+=-]+", normalized):
+        raise HTTPException(status_code=404, detail="message not found")
+    return normalized
+
+
 class MoveRequest(BaseModel):
     folder_name: str = Field(default="matchy", min_length=1, max_length=120)
 
@@ -378,17 +429,33 @@ app = FastAPI(title="mailcart-matchy-api")
 
 
 @app.get("/health")
-#R029: Expose Graph token health metadata (`token_status`, `token_expires_at`) from the API health endpoint.
-def health() -> dict[str, str]:
+#R029: Expose token metadata only to authenticated callers on the health endpoint.
+def health(
+    provided_token: str | None = Header(default=None, alias=WRITE_TOKEN_HEADER_NAME),
+) -> dict[str, str]:
     status = {"status": "ok"}
-    status.update(_TOKEN_MANAGER.token_status())
+    if _is_valid_write_token(provided_token):
+        status.update(_TOKEN_MANAGER.token_status())
     return status
 
 
-@app.get("/v1/messages/search")
+@app.get(
+    "/v1/messages/search",
+    dependencies=[Depends(_require_api_write_token)],
+    responses={
+        400: {"description": "Invalid scoped search query."},
+        401: {"description": "Unauthorized."},
+        502: {"description": "Graph upstream failure."},
+    },
+)
 #R020: Return recent messages for empty query; otherwise apply scoped filtering with caller limit.
 def search_messages(query: str = Query(default="", max_length=400), limit: int = Query(default=50, ge=1, le=100)) -> dict[str, Any]:
-    criteria = _parse_scoped_query(query)
+    try:
+        criteria = _parse_scoped_query(query)
+    except HTTPException as exc:
+        if exc.status_code == 400:
+            return {"messages": []}
+        raise
     normalized_query = query.strip()
     from_date = criteria["from"]
     to_date = criteria["to"]
@@ -461,15 +528,28 @@ def search_messages(query: str = Query(default="", max_length=400), limit: int =
     return {"messages": messages}
 
 
-@app.get("/v1/messages/{message_id}")
+@app.get(
+    "/v1/messages/{message_id}",
+    dependencies=[Depends(_require_api_write_token)],
+    responses={
+        400: {"description": "Invalid message id."},
+        404: {"description": "Message not found."},
+        401: {"description": "Unauthorized."},
+        502: {"description": "Graph upstream failure."},
+    },
+)
 #R035: Return a single message with subject, sender, recipients, body, and preview metadata for downstream UIs.
 def get_message(message_id: str) -> dict[str, Any]:
-    if not message_id.strip():
-        raise HTTPException(status_code=400, detail="message_id is required")
-    payload = _graph_get(
-        _graph_message_path(message_id),
-        params={"$select": "id,subject,bodyPreview,body,from,toRecipients,receivedDateTime"},
-    )
+    normalized_message_id = _validated_graph_message_id(message_id)
+    try:
+        payload = _graph_get(
+            _graph_message_path(normalized_message_id),
+            params={"$select": "id,subject,bodyPreview,body,from,toRecipients,receivedDateTime"},
+        )
+    except HTTPException as exc:
+        if exc.status_code == 502 and "ErrorInvalidIdMalformed" in str(exc.detail):
+            raise HTTPException(status_code=404, detail="message not found") from exc
+        raise
     sender = str((((payload.get("from") or {}).get("emailAddress") or {}).get("address")) or "")
     recipients_raw = payload.get("toRecipients") or []
     recipients = [
@@ -496,11 +576,26 @@ def get_message(message_id: str) -> dict[str, Any]:
     }
 
 
-@app.post("/v1/messages/{message_id}/move")
+@app.post(
+    "/v1/messages/{message_id}/move",
+    dependencies=[Depends(_require_api_write_token)],
+    responses={
+        400: {"description": "Invalid move request."},
+        404: {"description": "Message not found."},
+        401: {"description": "Unauthorized."},
+        502: {"description": "Graph upstream failure."},
+    },
+)
 #R025: Move selected message into requested destination folder.
 def move_message(message_id: str, request: MoveRequest) -> dict[str, Any]:
+    normalized_message_id = _validated_graph_message_id(message_id)
     folder_id = _get_or_create_folder_id(request.folder_name)
-    response = _graph_post(f"{_graph_message_path(message_id)}/move", {"destinationId": folder_id})
+    try:
+        response = _graph_post(f"{_graph_message_path(normalized_message_id)}/move", {"destinationId": folder_id})
+    except HTTPException as exc:
+        if exc.status_code == 502 and "ErrorInvalidIdMalformed" in str(exc.detail):
+            raise HTTPException(status_code=404, detail="message not found") from exc
+        raise
     return {"moved": True, "folder_id": folder_id, "result_id": response.get("id", "")}
 
 

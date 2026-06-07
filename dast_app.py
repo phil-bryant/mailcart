@@ -19,7 +19,7 @@ def _resolve(names: list[str], default: str) -> str:
 
 
 def main() -> None:
-    home_certs = Path.home() / ".teller"
+    home_certs = Path.home() / ".mailcart"
     host = _resolve(
         [
             "CLASSIFICATION_API_HOST",
@@ -41,12 +41,20 @@ def main() -> None:
         )
     )
     cert = _resolve(
-        ["TELLER_CLASSIFIER_TLS_CERT_FILE", "MATCHY_API_TLS_CERT_FILE"],
-        str(home_certs / "classifier-localhost-cert.pem"),
+        [
+            "MAILCART_MATCHY_TLS_CERT_FILE",
+            "MATCHY_API_TLS_CERT_FILE",
+            "TELLER_CLASSIFIER_TLS_CERT_FILE",
+        ],
+        str(home_certs / "matchy-localhost-cert.pem"),
     )
     key = _resolve(
-        ["TELLER_CLASSIFIER_TLS_KEY_FILE", "MATCHY_API_TLS_KEY_FILE"],
-        str(home_certs / "classifier-localhost-key.pem"),
+        [
+            "MAILCART_MATCHY_TLS_KEY_FILE",
+            "MATCHY_API_TLS_KEY_FILE",
+            "TELLER_CLASSIFIER_TLS_KEY_FILE",
+        ],
+        str(home_certs / "matchy-localhost-key.pem"),
     )
 
     scripts_dir = Path(__file__).resolve().parent / "scripts"

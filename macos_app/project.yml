@@ -15,7 +15,7 @@ settings:
 packages:
   plcrashreporter:
     url: https://github.com/microsoft/plcrashreporter.git
-    from: 1.12.0
+    exactVersion: 1.12.2
 targets:
   Mailcart:
     type: application

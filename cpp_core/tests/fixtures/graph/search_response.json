@@ -1,0 +1,17 @@
+{
+  "value": [
+    {
+      "id": "msg-graph-123",
+      "subject": "CVS receipt",
+      "bodyPreview": "Total 24.39 with no currency symbol",
+      "receivedDateTime": "2026-05-28T11:59:00Z"
+    },
+    {
+      "id": "msg-graph-999",
+      "subject": "Unrelated newsletter",
+      "bodyPreview": "Weekly digest",
+      "receivedDateTime": "2026-05-27T10:00:00Z"
+    }
+  ],
+  "@odata.nextLink": "https://graph.microsoft.com/v1.0/me/messages?$skiptoken=cursor-abc"
+}

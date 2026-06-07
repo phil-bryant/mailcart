@@ -11,6 +11,9 @@ namespace mailcart_bridge
   {
     const int kGraphSearchFetchLimit = 50;
     NSString *const kCursorPrefix = @"__cursor__";
+    GraphSynchronousTransport g_graph_transport_hook = nullptr;
+    GraphRefreshHook g_graph_refresh_hook = nullptr;
+    GraphTokenResolverHook g_graph_token_resolver_hook = nullptr;
 
     // #R015: Resolve Graph token from shared cache or runtime environment for live fetches.
     NSString *NormalizeGraphToken(NSString *token)
@@ -86,9 +89,39 @@ namespace mailcart_bridge
     }
   } // namespace
 
+  // #R055: Install deterministic replay hooks for Graph transport/auth flows in integration tests.
+  void InstallGraphTransportHook(GraphSynchronousTransport hook)
+  {
+    g_graph_transport_hook = hook;
+  }
+
+  // #R055: Install deterministic replay hooks for Graph transport/auth flows in integration tests.
+  void InstallGraphRefreshHook(GraphRefreshHook hook)
+  {
+    g_graph_refresh_hook = hook;
+  }
+
+  // #R055: Install deterministic replay hooks for Graph transport/auth flows in integration tests.
+  void InstallGraphTokenResolverHook(GraphTokenResolverHook hook)
+  {
+    g_graph_token_resolver_hook = hook;
+  }
+
+  // #R055: Install deterministic replay hooks for Graph transport/auth flows in integration tests.
+  void ResetGraphTestHooks()
+  {
+    g_graph_transport_hook = nullptr;
+    g_graph_refresh_hook = nullptr;
+    g_graph_token_resolver_hook = nullptr;
+  }
+
   // #R015: Refresh cached Graph credentials when a live request reports HTTP 401.
   BOOL AttemptRefreshGraphToken()
   {
+    if (g_graph_refresh_hook != nullptr)
+    {
+      return g_graph_refresh_hook();
+    }
     const char *repo_root = std::getenv("MAILCART_REPO_ROOT");
     if (repo_root == nullptr)
     {
@@ -119,6 +152,11 @@ namespace mailcart_bridge
   // #R015: Resolve Graph token from shared cache or runtime environment for live fetches.
   NSString *ResolveGraphToken()
   {
+    if (g_graph_token_resolver_hook != nullptr)
+    {
+      NSString *resolved = g_graph_token_resolver_hook();
+      return NormalizeGraphToken(resolved == nil ? @"" : resolved);
+    }
     NSString *token = TokenFromCacheFile();
     if (token.length == 0)
     {
@@ -155,6 +193,10 @@ namespace mailcart_bridge
 
   NSData *PerformRequestSynchronously(NSURLRequest *request, NSHTTPURLResponse **http_response, NSError **request_error)
   {
+    if (g_graph_transport_hook != nullptr)
+    {
+      return g_graph_transport_hook(request, http_response, request_error);
+    }
     NSData *captured_data = nil;
     NSHTTPURLResponse *captured_http_response = nil;
     NSError *captured_error = nil;
@@ -298,6 +340,26 @@ namespace mailcart_bridge
       }
       return cursor;
     }
+
+    // #R020: Accept pagination cursors only for trusted Graph HTTPS message endpoints.
+    BOOL IsTrustedGraphNextCursor(NSString *cursor)
+    {
+      if (cursor.length == 0)
+      {
+        return YES;
+      }
+      NSURLComponents *components = [NSURLComponents componentsWithString:cursor];
+      if (components == nil)
+      {
+        return NO;
+      }
+      NSString *scheme = [components.scheme lowercaseString];
+      NSString *host = [components.host lowercaseString];
+      NSString *path = components.path == nil ? @"" : components.path;
+      return [scheme isEqualToString:@"https"] &&
+             [host isEqualToString:@"graph.microsoft.com"] &&
+             [path hasPrefix:@"/v1.0/me/messages"];
+    }
   } // namespace
 
   // #R020: Apply case-insensitive subject/preview search matching.
@@ -329,6 +391,11 @@ namespace mailcart_bridge
         NSDictionary *root = JsonDictionaryOrEmpty(parsed);
         values = JsonArrayOrEmpty(root[@"value"]);
         next_cursor = JsonStringOrEmpty(root[@"@odata.nextLink"]);
+        if (!IsTrustedGraphNextCursor(next_cursor))
+        {
+          next_cursor = @"";
+          fetch_error = @"Graph pagination returned an unexpected host.";
+        }
       }
       NSString *query_text = ToNSString(query);
       if ([query_text hasPrefix:kCursorPrefix])

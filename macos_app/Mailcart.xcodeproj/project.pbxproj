@@ -628,8 +628,8 @@
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/microsoft/plcrashreporter.git";
 			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 1.12.0;
+				kind = exactVersion;
+				version = 1.12.2;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */

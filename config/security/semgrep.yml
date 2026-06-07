@@ -1,0 +1,26 @@
+rules:
+  - id: mailcart.subprocess-shell-true
+    message: Avoid subprocess with shell=True. Use an argument list and explicit binary path.
+    severity: ERROR
+    languages:
+      - python
+    metadata:
+      category: security
+      cwe:
+        - "CWE-78: OS Command Injection"
+      confidence: HIGH
+    pattern: subprocess.$FUNC(..., shell=True, ...)
+
+  - id: mailcart.http-outside-loopback
+    message: Avoid non-localhost HTTP endpoints in production code paths.
+    severity: ERROR
+    languages:
+      - python
+    metadata:
+      category: security
+      cwe:
+        - "CWE-319: Cleartext Transmission of Sensitive Information"
+      confidence: MEDIUM
+    patterns:
+      - pattern-regex: "(?i)http://[A-Za-z0-9._:-]+"
+      - pattern-not-regex: "(?i)http://(127\\.0\\.0\\.1|localhost)(:[0-9]+)?"

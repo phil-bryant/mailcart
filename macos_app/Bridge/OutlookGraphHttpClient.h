@@ -3,6 +3,17 @@
 
 namespace mailcart_bridge
 {
+  using GraphSynchronousTransport =
+      NSData *(*)(NSURLRequest *request, NSHTTPURLResponse **http_response, NSError **request_error);
+  using GraphRefreshHook = BOOL (*)();
+  using GraphTokenResolverHook = NSString *(*)();
+
+  // #R055: Install deterministic replay hooks for Graph transport/auth flows in integration tests.
+  void InstallGraphTransportHook(GraphSynchronousTransport hook);
+  void InstallGraphRefreshHook(GraphRefreshHook hook);
+  void InstallGraphTokenResolverHook(GraphTokenResolverHook hook);
+  void ResetGraphTestHooks();
+
   // #R015: Resolve Graph token from shared cache or runtime environment for live fetches.
   NSString *ResolveGraphToken();
 

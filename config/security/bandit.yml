@@ -1,0 +1,8 @@
+exclude_dirs:
+  - tests
+  - archive
+  - mailcart-venv
+  - artifacts/venv/security
+  - .build
+skips:
+  - B101

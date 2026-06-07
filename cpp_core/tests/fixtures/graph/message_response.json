@@ -1,0 +1,21 @@
+{
+  "id": "msg-graph-123",
+  "subject": "CVS receipt",
+  "receivedDateTime": "2026-05-28T11:59:00Z",
+  "from": {
+    "emailAddress": {
+      "address": "receipts@cvs.com"
+    }
+  },
+  "toRecipients": [
+    {
+      "emailAddress": {
+        "address": "customer@example.com"
+      }
+    }
+  ],
+  "body": {
+    "contentType": "html",
+    "content": "<p>Total 24.39</p>"
+  }
+}
