@@ -261,6 +261,17 @@ EOF
   chmod +x "${STUB_BIN}/semgrep"
 }
 
+create_sast_config_fixtures() {
+  #R001: Make-test harness helper to seed SAST config fixtures used by make sast.
+  mkdir -p "${SANDBOX}/config/security"
+  cat > "${SANDBOX}/config/security/semgrep.yml" <<'EOF'
+rules: []
+EOF
+  cat > "${SANDBOX}/config/security/bandit.yml" <<'EOF'
+exclude_dirs: []
+EOF
+}
+
 create_clang_tidy_stub() {
   #R001: Make-test harness helper to stub clang-tidy.
   cat > "${STUB_BIN}/clang-tidy" <<'EOF'
@@ -442,6 +453,7 @@ EOF
   create_detect_secrets_stub
   create_git_ls_files_stub
   create_gitleaks_stub
+  create_sast_config_fixtures
   : > "${SANDBOX}/06_run_all_tests_parallel.sh"
   : > "${SANDBOX}/01_install_prerequisites.sh"
 
@@ -454,9 +466,9 @@ EOF
   [ "$status" -eq 0 ]
   run rg "\\[06_run_all_tests_parallel.sh\\]" "${TEST_LOG}"
   [ "$status" -eq 0 ]
-  run rg "^semgrep +scan --config auto --config \.semgrep.yml --error \.$" "${TEST_LOG}"
+  run rg "^semgrep +scan --config auto --config config/security/semgrep\\.yml --error \.$" "${TEST_LOG}"
   [ "$status" -eq 0 ]
-  run rg "^bandit +-q +-r scripts +-x mailcart-venv,.venv,venv,build,dist$" "${TEST_LOG}"
+  run rg "^bandit +-q +-r scripts +-c config/security/bandit\\.yml$" "${TEST_LOG}"
   [ "$status" -eq 0 ]
   run rg "^detect-secrets +scan .+" "${TEST_LOG}"
   [ "$status" -eq 0 ]
@@ -476,6 +488,7 @@ EOF
   create_detect_secrets_stub
   create_git_ls_files_stub
   create_gitleaks_stub
+  create_sast_config_fixtures
   : > "${SANDBOX}/06_run_all_tests_parallel.sh"
   : > "${SANDBOX}/01_install_prerequisites.sh"
 
@@ -501,6 +514,7 @@ EOF
   create_detect_secrets_stub
   create_git_ls_files_stub
   create_gitleaks_stub
+  create_sast_config_fixtures
   : > "${SANDBOX}/06_run_all_tests_parallel.sh"
   : > "${SANDBOX}/01_install_prerequisites.sh"
 
@@ -582,6 +596,7 @@ EOF
   create_detect_secrets_stub
   create_git_ls_files_stub
   create_gitleaks_stub
+  create_sast_config_fixtures
   run env PATH="${STUB_BIN}:/usr/bin:/bin" DETECT_SECRETS_EMIT_MAKEFILE_KEYWORD_FINDINGS=1 make -C "${SANDBOX}" sast
   [ "$status" -eq 0 ]
   [[ "${output}" == *"✅ SAST checks completed with no findings."* ]]

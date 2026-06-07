@@ -99,9 +99,11 @@ setup() {
   [ "$status" -eq 0 ]
 }
 
-@test "R029: health endpoint surfaces token status metadata" {
-  #R029-T01: Health endpoint surfaces token status metadata.
+@test "R029: health endpoint exposes token metadata only for authenticated callers" {
+  #R029-T01: Health endpoint exposes token metadata only to authenticated callers.
   run rg -F '@app.get("/health")' "${API}"
+  [ "$status" -eq 0 ]
+  run rg -F "if _is_valid_write_token(provided_token):" "${API}"
   [ "$status" -eq 0 ]
   run rg -F "status.update(_TOKEN_MANAGER.token_status())" "${API}"
   [ "$status" -eq 0 ]
@@ -116,12 +118,14 @@ setup() {
 }
 
 @test "R035: single-message endpoint selects body/recipients and rejects blank ids" {
-  #R035-T01: Single-message endpoint selects body/recipients/metadata and rejects blank ids with HTTP 400.
-  run rg -F '@app.get("/v1/messages/{message_id}")' "${API}"
+  #R035-T01: Single-message endpoint selects body/recipients/metadata and rejects invalid ids with HTTP 404.
+  run rg -F "@app.get(" "${API}"
+  [ "$status" -eq 0 ]
+  run rg -F '"/v1/messages/{message_id}",' "${API}"
   [ "$status" -eq 0 ]
   run rg -F "toRecipients" "${API}"
   [ "$status" -eq 0 ]
-  run rg -F 'detail="message_id is required"' "${API}"
+  run rg -F 'status_code=404, detail="message not found"' "${API}"
   [ "$status" -eq 0 ]
 }
 
@@ -184,5 +188,23 @@ setup() {
   run rg -F "def _is_port_in_use(host: str, port: int) -> bool:" "${API}"
   [ "$status" -eq 0 ]
   run rg -F "sock.connect_ex((host, port)) == 0" "${API}"
+  [ "$status" -eq 0 ]
+}
+
+@test "R620: message routes enforce caller write-token auth with fail-closed status codes" {
+  #R620-T01: Message API routes enforce write-token auth and 503/401 behavior.
+  run rg -F "def _require_api_write_token(" "${API}"
+  [ "$status" -eq 0 ]
+  run rg -F "MAILCART_API_WRITE_TOKEN" "${API}"
+  [ "$status" -eq 0 ]
+  run rg -F 'status_code=503' "${API}"
+  [ "$status" -eq 0 ]
+  run rg -F 'status_code=401' "${API}"
+  [ "$status" -eq 0 ]
+  run rg -F '@app.get(' "${API}"
+  [ "$status" -eq 0 ]
+  run rg -F '"/v1/messages/search",' "${API}"
+  [ "$status" -eq 0 ]
+  run rg -F "dependencies=[Depends(_require_api_write_token)]" "${API}"
   [ "$status" -eq 0 ]
 }

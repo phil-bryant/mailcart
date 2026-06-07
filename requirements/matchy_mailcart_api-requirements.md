@@ -49,10 +49,10 @@ Design: Write access token, refresh token, expiry, and client id to `~/.cache/ma
 Tests:
 - R028-T01: Refreshed sessions persist to the shared cache with restrictive permissions.
 
-R029  Statement: Expose token health metadata from the API health endpoint.
-Design: `/health` returns `token_status` and `token_expires_at` when token state can be resolved.
+R029  Statement: Restrict token health metadata visibility on the API health endpoint.
+Design: `/health` always returns `status: ok`; `token_status` and `token_expires_at` are returned only when the caller supplies a valid write-token header.
 Tests:
-- R029-T01: Health endpoint surfaces token status metadata.
+- R029-T01: Health endpoint exposes token metadata only to authenticated callers.
 
 R030  Statement: Surface Graph auth failures instead of empty search results.
 Design: When fallback message fetch fails due to authentication, return explicit 502 auth detail rather than `{"messages": []}`.
@@ -60,9 +60,9 @@ Tests:
 - R030-T01: Graph auth failures surface a 502 detail instead of empty results.
 
 R035  Statement: Expose a single-message fetch endpoint with body, recipients, and metadata for downstream UIs.
-Design: `GET /v1/messages/{message_id}` calls Microsoft Graph `/me/messages/{id}?$select=id,subject,bodyPreview,body,from,toRecipients,receivedDateTime` and returns `{message_id, subject, preview, received_at, sender, recipients, html_body, text_body, body_text}`. The endpoint distinguishes HTML vs plain text body (`html_body` vs `text_body`); `recipients` is a comma-separated list of `toRecipients` addresses. Blank `message_id` returns HTTP 400.
+Design: `GET /v1/messages/{message_id}` calls Microsoft Graph `/me/messages/{id}?$select=id,subject,bodyPreview,body,from,toRecipients,receivedDateTime` and returns `{message_id, subject, preview, received_at, sender, recipients, html_body, text_body, body_text}`. The endpoint distinguishes HTML vs plain text body (`html_body` vs `text_body`); `recipients` is a comma-separated list of `toRecipients` addresses. Invalid or malformed `message_id` inputs fail closed with HTTP 404.
 Tests:
-- R035-T01: Single-message endpoint selects body/recipients/metadata and rejects blank ids with HTTP 400.
+- R035-T01: Single-message endpoint selects body/recipients/metadata and rejects invalid ids with HTTP 404.
 
 R040  Statement: Start the Matchy Mailcart API over HTTPS only.
 Design: API startup resolves TLS cert/key file paths from `MAILCART_MATCHY_TLS_CERT_FILE` and `MAILCART_MATCHY_TLS_KEY_FILE` (with localhost defaults under `~/.mailcart`) and launches uvicorn with `ssl_certfile` and `ssl_keyfile`. Callers must target `https://127.0.0.1:8788` (never `http://`) and supply TLS verification using either `~/.mailcart/matchy-localhost-cert.pem` or a CA bundle that trusts the local mkcert root.
@@ -99,6 +99,11 @@ Design: `_is_port_in_use(host, port)` opens a TCP socket with a short timeout an
 Tests:
 - R615-T01: `_is_port_in_use` probes the port via a short-timeout TCP connect.
 
+R620  Statement: Require caller-facing write-token authentication for message API routes.
+Design: `/v1/messages/search`, `/v1/messages/{message_id}`, and `/v1/messages/{message_id}/move` require `X-Teller-Write-Token` (configurable via `MAILCART_API_WRITE_TOKEN_HEADER`) and validate it against `MAILCART_API_WRITE_TOKEN` or `TELLER_CLASSIFIER_WRITE_TOKEN` using constant-time comparison. Missing server token config returns HTTP 503; invalid/missing caller token returns HTTP 401.
+Tests:
+- R620-T01: Message API routes require write-token auth and enforce 503/401 behavior when unconfigured/invalid.
+
 ## Changelog
 
 - 2026-05-12: Added script-scoped Matchy API requirements for `scripts/matchy_mailcart_api.py`.
@@ -110,3 +115,5 @@ Tests:
 - 2026-06-03: Clarified R040 caller transport contract (HTTPS-only base URL plus TLS verify bundle requirements) to prevent HTTP/TLS mismatch disconnect loops.
 - 2026-06-06: Converted all `Tests:` bullets to numbered `RNNN-Tnn` form for full strict traceability.
 - 2026-06-06: Added source-helper requirements R600/R605/R610/R615 for auth classification, POST delegation, date parsing, and port-availability probing.
+- 2026-06-07: Tightened `/health` metadata exposure (R029) and added caller-facing write-token auth contract for message routes (R620).
+- 2026-06-07: Updated R035 invalid-id behavior to fail closed with HTTP 404.

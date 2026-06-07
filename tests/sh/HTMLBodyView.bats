@@ -16,6 +16,6 @@ setup() {
   [ "$status" -eq 0 ]
   run rg -F "func makeNSView(context: Context) -> WKWebView {" "${SRC}"
   [ "$status" -eq 0 ]
-  run rg -F "webView.loadHTMLString(wrappedHTML(html), baseURL: nil)" "${SRC}"
+  run rg -F "webView.loadHTMLString(wrappedHTML(html), baseURL: URL(string: \"about:blank\"))" "${SRC}"
   [ "$status" -eq 0 ]
 }
