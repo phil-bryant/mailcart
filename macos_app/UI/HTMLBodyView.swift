@@ -45,7 +45,12 @@ struct HTMLBodyView: NSViewRepresentable {
         <head>
             <meta charset="utf-8" />
             <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-            <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https: data:; style-src 'unsafe-inline'; font-src https: data:; frame-ancestors 'none'; form-action 'none'; base-uri 'none'" />
+            <meta
+                http-equiv="Content-Security-Policy"
+                content="default-src 'none'; img-src https: data:;
+                style-src 'unsafe-inline'; font-src https: data:;
+                frame-ancestors 'none'; form-action 'none'; base-uri 'none'"
+            />
             <style>
                 :root { color-scheme: light dark; }
                 body {
@@ -72,7 +77,11 @@ struct HTMLBodyView: NSViewRepresentable {
         var lastHTML: String = ""
 
         // #R001: Restrict WKWebView navigations to safe local schemes during HTML rendering.
-        func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+        func webView(
+            _ webView: WKWebView,
+            decidePolicyFor navigationAction: WKNavigationAction,
+            decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
+        ) {
             guard let requestURL = navigationAction.request.url else {
                 decisionHandler(.cancel)
                 return
