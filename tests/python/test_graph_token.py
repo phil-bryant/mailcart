@@ -13,7 +13,17 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+def _resolve_scripts_dir(module_filename: str) -> Path:
+    # Keep imports stable when tests are copied under artifacts/mutation/mutants.
+    probe_roots = [Path.cwd().resolve(), *Path(__file__).resolve().parents]
+    for root in probe_roots:
+        candidate = root / "scripts"
+        if (candidate / module_filename).is_file():
+            return candidate
+    return Path(__file__).resolve().parents[2] / "scripts"
+
+
+sys.path.insert(0, str(_resolve_scripts_dir("graph_token.py")))
 
 import graph_token  # noqa: E402
 from graph_token import (  # noqa: E402
