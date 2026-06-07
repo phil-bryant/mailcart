@@ -38,3 +38,27 @@ setup() {
   run rg -F "OutlookMailcartDTO *)readMailcartWithMessageId:" "${BRIDGE_MM}"
   [ "$status" -eq 0 ]
 }
+
+@test "R050: bridge attachment-open selector stages fetched bytes and opens through NSWorkspace" {
+  #R050-T01: Bridge header declares the attachment-open selector and implementation stages fetched bytes to a temp path before opening with NSWorkspace.
+  run rg -F "openAttachmentWithMessageId:" "${BRIDGE_H}"
+  [ "$status" -eq 0 ]
+  run rg -F "NSData *attachment_data = FetchGraphGetData" "${BRIDGE_MM}"
+  [ "$status" -eq 0 ]
+  run rg -F "BOOL wrote_file = [attachment_data writeToFile:temporary_file_path options:NSDataWritingAtomic error:&write_error];" "${BRIDGE_MM}"
+  [ "$status" -eq 0 ]
+  run rg -F "opened = [[NSWorkspace sharedWorkspace] openURL:temporary_file_url];" "${BRIDGE_MM}"
+  [ "$status" -eq 0 ]
+}
+
+@test "R055: bridge folder-move selector normalizes blank names and dispatches MoveMessageToFolder" {
+  #R055-T01: Bridge header declares the folder-move selector and implementation normalizes blank folder names before dispatching MoveMessageToFolder.
+  run rg -F "moveMessageToFolderWithMessageId:" "${BRIDGE_H}"
+  [ "$status" -eq 0 ]
+  run rg -F "NSString *resolved_folder_name = [folderName stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];" "${BRIDGE_MM}"
+  [ "$status" -eq 0 ]
+  run rg -F 'resolved_folder_name = @"matchy";' "${BRIDGE_MM}"
+  [ "$status" -eq 0 ]
+  run rg -F "return MoveMessageToFolder(request);" "${BRIDGE_MM}"
+  [ "$status" -eq 0 ]
+}

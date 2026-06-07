@@ -10,6 +10,7 @@ from pathlib import Path
 from unittest import mock
 
 def _resolve_scripts_dir(module_filename: str) -> Path:
+    #R001: Resolve scripts directory robustly for copied mutation/fuzz test paths.
     # Keep imports stable when tests are copied under artifacts/mutation/mutants.
     probe_roots = [Path.cwd().resolve(), *Path(__file__).resolve().parents]
     for root in probe_roots:

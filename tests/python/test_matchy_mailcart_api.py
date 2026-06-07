@@ -7,7 +7,9 @@
 # #R025-T02: Traceability anchor.
 # #R035-T01: Traceability anchor.
 # #R035-T02: Traceability anchor.
+# #R029-T01: Traceability anchor.
 # #R050-T01: Traceability anchor.
+# #R620-T01: Traceability anchor.
 
 from __future__ import annotations
 
@@ -19,6 +21,7 @@ from pathlib import Path
 from unittest import mock
 
 def _resolve_scripts_dir(module_filename: str) -> Path:
+    #R020: Resolve scripts directory robustly for copied mutation/fuzz test paths.
     # Keep imports stable when tests are copied under artifacts/mutation/mutants.
     probe_roots = [Path.cwd().resolve(), *Path(__file__).resolve().parents]
     for root in probe_roots:
@@ -315,8 +318,8 @@ class EndpointAuthContractTests(unittest.TestCase):
                 return route
         self.fail(f"missing route: {method} {path}")
 
-    def test_search_get_move_routes_have_no_auth_dependencies(self) -> None:
-        #R035: search/get/move routes declare no auth dependencies.
+    def test_search_get_move_routes_require_write_token_dependency(self) -> None:
+        #R620-T01: search/get/move routes declare caller write-token auth dependencies.
         for path, method in [
             ("/v1/messages/search", "GET"),
             ("/v1/messages/{message_id}", "GET"),
@@ -326,8 +329,44 @@ class EndpointAuthContractTests(unittest.TestCase):
                 route = self._route_for(path, method)
                 dependant = getattr(route, "dependant", None)
                 self.assertIsNotNone(dependant)
-                self.assertEqual(getattr(dependant, "dependencies", []), [])
-                self.assertEqual(getattr(dependant, "security_requirements", []), [])
+                dependencies = getattr(dependant, "dependencies", [])
+                self.assertGreaterEqual(len(dependencies), 1)
+
+
+class WriteTokenAuthTests(unittest.TestCase):
+    def test_require_api_write_token_returns_503_when_server_token_missing(self) -> None:
+        #R620-T01: route auth dependency fails closed when write token is unconfigured.
+        with mock.patch.dict(api.os.environ, {"MAILCART_API_WRITE_TOKEN": "", "TELLER_CLASSIFIER_WRITE_TOKEN": ""}, clear=False):
+            with self.assertRaises(Exception) as ctx:
+                api._require_api_write_token(None)
+        self.assertEqual(getattr(ctx.exception, "status_code", None), 503)
+
+    def test_require_api_write_token_returns_401_on_invalid_token(self) -> None:
+        #R620-T01: route auth dependency rejects invalid caller tokens.
+        with mock.patch.dict(
+            api.os.environ,
+            {"MAILCART_API_WRITE_TOKEN": "expected-token", "TELLER_CLASSIFIER_WRITE_TOKEN": ""},
+            clear=False,
+        ):
+            with self.assertRaises(Exception) as ctx:
+                api._require_api_write_token("wrong-token")
+        self.assertEqual(getattr(ctx.exception, "status_code", None), 401)
+
+    def test_health_redacts_token_metadata_without_valid_write_token(self) -> None:
+        #R029-T01: /health exposes token metadata only to authenticated callers.
+        with (
+            mock.patch.dict(
+                api.os.environ,
+                {"MAILCART_API_WRITE_TOKEN": "expected-token", "TELLER_CLASSIFIER_WRITE_TOKEN": ""},
+                clear=False,
+            ),
+            mock.patch.object(api._TOKEN_MANAGER, "token_status", return_value={"token_status": "ok", "token_expires_at": "soon"}),
+        ):
+            unauth = api.health(None)
+            authed = api.health("expected-token")
+        self.assertEqual(unauth, {"status": "ok"})
+        self.assertEqual(authed["status"], "ok")
+        self.assertEqual(authed["token_status"], "ok")
 
 
 class GraphRequestAuthTests(unittest.TestCase):

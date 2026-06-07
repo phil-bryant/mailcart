@@ -17,10 +17,12 @@ NS_ASSUME_NONNULL_BEGIN
 // #R045: Return an immutable Objective-C full-mailcart DTO for Swift UI consumption.
 - (OutlookMailcartDTO *)readMailcartWithMessageId:(NSString *)messageId;
 
+// #R050: Expose attachment-open bridge entrypoint backed by Graph attachment fetch.
 - (BOOL)openAttachmentWithMessageId:(NSString *)messageId
                         attachmentId:(NSString *)attachmentId
                           fileName:(NSString *)fileName;
 
+// #R055: Expose folder-move bridge entrypoint backed by move-request dispatch.
 - (BOOL)moveMessageToFolderWithMessageId:(NSString *)messageId
                               folderName:(NSString *)folderName;
 

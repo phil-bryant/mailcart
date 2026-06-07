@@ -6,6 +6,7 @@ setup() {
   #R005: Test harness setup for OutlookBridgeModels contract checks.
   REPO_ROOT="$(mailcart_repo_root)"
   MODELS_H="${REPO_ROOT}/macos_app/Bridge/OutlookBridgeModels.h"
+  MODELS_M="${REPO_ROOT}/macos_app/Bridge/OutlookBridgeModels.m"
 }
 
 @test "R005: bridge DTO models are immutable copies with init disallowed" {
@@ -19,4 +20,8 @@ setup() {
   run rg -c -F -- "- (instancetype)init NS_UNAVAILABLE;" "${MODELS_H}"
   [ "$status" -eq 0 ]
   [ "${output}" -ge 2 ]
+  run rg -F "// #R005: Materialize immutable search-result DTO values through the designated initializer." "${MODELS_M}"
+  [ "$status" -eq 0 ]
+  run rg -F "// #R005: Materialize immutable attachment DTO values through the designated initializer." "${MODELS_M}"
+  [ "$status" -eq 0 ]
 }

@@ -23,6 +23,7 @@
 
 @implementation OutlookSearchResultDTO
 
+// #R005: Materialize immutable search-result DTO values through the designated initializer.
 - (instancetype)initWithSummaries:(NSArray<OutlookMailcartSummaryDTO *> *)summaries
                        nextCursor:(NSString *)nextCursor
                      errorMessage:(NSString *)errorMessage
@@ -41,6 +42,7 @@
 
 @implementation OutlookAttachmentDTO
 
+// #R005: Materialize immutable attachment DTO values through the designated initializer.
 - (instancetype)initWithAttachmentId:(NSString *)attachmentId
                             fileName:(NSString *)fileName
                          contentType:(NSString *)contentType

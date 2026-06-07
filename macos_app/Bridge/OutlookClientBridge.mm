@@ -118,6 +118,7 @@ class BridgeOutlookGateway : public OutlookServiceGateway
   return dto;
 }
 
+// #R050: Download a Graph attachment payload and open the staged temp file.
 - (BOOL)openAttachmentWithMessageId:(NSString *)messageId
                        attachmentId:(NSString *)attachmentId
                            fileName:(NSString *)fileName
@@ -151,6 +152,7 @@ class BridgeOutlookGateway : public OutlookServiceGateway
   return opened;
 }
 
+// #R055: Normalize target folder input and dispatch a move request.
 - (BOOL)moveMessageToFolderWithMessageId:(NSString *)messageId
                               folderName:(NSString *)folderName
 {
