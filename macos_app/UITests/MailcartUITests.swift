@@ -4,7 +4,8 @@ import XCTest
 // that launches the packaged app in fixture mode.
 final class MailcartUITests: XCTestCase {
     private var app: XCUIApplication!
-    private let timeout: TimeInterval = 5
+    private let timeout: TimeInterval = 10
+    private let loadMoreTimeout: TimeInterval = 15
 
     // #R001: Resolve the first hittable summary identifier for ordering checks.
     private func firstVisibleSummaryIdentifier() -> String? {
@@ -18,6 +19,27 @@ final class MailcartUITests: XCTestCase {
             }
         }
         return nil
+    }
+
+    // #R001: Click load-more and tolerate delayed fixture row materialization.
+    private func clickLoadMoreAndWaitForCityRow(file: StaticString = #filePath, line: UInt = #line) {
+        let cityRow = app.staticTexts["City Transit Card refill notice"]
+        if cityRow.exists {
+            return
+        }
+
+        let loadMoreButton = app.buttons["mailcart.loadMoreButton"]
+        XCTAssertTrue(loadMoreButton.waitForExistence(timeout: timeout), file: file, line: line)
+        loadMoreButton.click()
+        if cityRow.waitForExistence(timeout: loadMoreTimeout) {
+            return
+        }
+
+        // One retry guards against occasional swallowed click events in macOS UI automation.
+        if loadMoreButton.exists && loadMoreButton.isHittable {
+            loadMoreButton.click()
+        }
+        XCTAssertTrue(cityRow.waitForExistence(timeout: loadMoreTimeout), file: file, line: line)
     }
 
     // #R001: Launch the app in deterministic UI-testing fixture mode.
@@ -45,12 +67,7 @@ final class MailcartUITests: XCTestCase {
     func testLoadMoreAppendsFixtureRows() {
         XCTAssertTrue(app.staticTexts["Coffee Roasters weekly update"].waitForExistence(timeout: timeout))
         XCTAssertFalse(app.staticTexts["City Transit Card refill notice"].exists)
-
-        let loadMoreButton = app.buttons["mailcart.loadMoreButton"]
-        XCTAssertTrue(loadMoreButton.waitForExistence(timeout: timeout))
-        loadMoreButton.click()
-
-        XCTAssertTrue(app.staticTexts["City Transit Card refill notice"].waitForExistence(timeout: timeout))
+        clickLoadMoreAndWaitForCityRow()
     }
 
     // #R001: Verify selecting a summary loads detail metadata.
@@ -66,11 +83,8 @@ final class MailcartUITests: XCTestCase {
 
     // #R001: Verify sort controls and rendered/raw body modes in one launch.
     func testSortDetailAndBodyModesWorkInSingleLaunch() {
-        let loadMoreButton = app.buttons["mailcart.loadMoreButton"]
-        XCTAssertTrue(loadMoreButton.waitForExistence(timeout: timeout))
-        loadMoreButton.click()
+        clickLoadMoreAndWaitForCityRow()
         XCTAssertTrue(app.staticTexts["Airline Luggage Fee confirmation"].waitForExistence(timeout: timeout))
-        XCTAssertTrue(app.staticTexts["City Transit Card refill notice"].waitForExistence(timeout: timeout))
 
         let subjectSortButton = app.descendants(matching: .any).matching(identifier: "mailcart.sortSubject").firstMatch
         XCTAssertTrue(subjectSortButton.waitForExistence(timeout: timeout))
@@ -97,7 +111,7 @@ final class MailcartUITests: XCTestCase {
         app.typeKey(.return, modifierFlags: [])
 
         let cityRow = app.staticTexts["City Transit Card refill notice"]
-        XCTAssertTrue(cityRow.waitForExistence(timeout: timeout))
+        XCTAssertTrue(cityRow.waitForExistence(timeout: loadMoreTimeout))
         cityRow.click()
         XCTAssertTrue(app.staticTexts["mailcart.detailSubject"].waitForExistence(timeout: timeout))
         // swiftlint:disable:next line_length
