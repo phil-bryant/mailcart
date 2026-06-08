@@ -43,13 +43,20 @@ TLS_KEY_ENV = "MAILCART_MATCHY_TLS_KEY_FILE"
 TLS_CERT_DEFAULT = TLS_DIR_DEFAULT / "matchy-localhost-cert.pem"
 TLS_KEY_DEFAULT = TLS_DIR_DEFAULT / "matchy-localhost-key.pem"
 WRITE_TOKEN_HEADER_NAME = os.environ.get("MAILCART_API_WRITE_TOKEN_HEADER", "X-Teller-Write-Token")
-WRITE_TOKEN_ENV_VARS = ("MAILCART_API_WRITE_TOKEN", "TELLER_CLASSIFIER_WRITE_TOKEN")
+WRITE_TOKEN_ENV_VARS = ("MAILCART_API_WRITE_TOKEN", "TELLER_CLASSIFIER_WRITE_TOKEN", "CLASSY_WRITE_TOKEN")
+
+
+def _normalized_write_token(token_value: str | None) -> str:
+    normalized = (token_value or "").strip()
+    if normalized.lower().startswith("bearer "):
+        return normalized[7:].strip()
+    return normalized
 
 
 #R620: Resolve the configured caller write-token from supported environment keys.
 def _configured_write_token() -> str:
     for env_name in WRITE_TOKEN_ENV_VARS:
-        value = os.environ.get(env_name, "").strip()
+        value = _normalized_write_token(os.environ.get(env_name, ""))
         if value:
             return value
     return ""
@@ -60,23 +67,25 @@ def _is_valid_write_token(provided_token: str | None) -> bool:
     configured_token = _configured_write_token()
     if not configured_token:
         return False
-    candidate = (provided_token or "").strip()
+    candidate = _normalized_write_token(provided_token)
     return bool(candidate) and hmac.compare_digest(candidate, configured_token)
 
 
 #R620: Require caller-facing write-token auth for all message API routes.
 def _require_api_write_token(
     provided_token: str | None = Header(default=None, alias=WRITE_TOKEN_HEADER_NAME),
+    authorization_header: str | None = Header(default=None, alias="Authorization"),
 ) -> None:
+    candidate_token = (provided_token or "").strip() or (authorization_header or "").strip()
     if not _configured_write_token():
         raise HTTPException(
             status_code=503,
             detail=(
                 "Mailcart API write token is not configured. Set MAILCART_API_WRITE_TOKEN "
-                "or TELLER_CLASSIFIER_WRITE_TOKEN."
+                "or TELLER_CLASSIFIER_WRITE_TOKEN (CLASSY_WRITE_TOKEN is also accepted)."
             ),
         )
-    if not _is_valid_write_token(provided_token):
+    if not _is_valid_write_token(candidate_token):
         raise HTTPException(
             status_code=401,
             detail="Unauthorized",

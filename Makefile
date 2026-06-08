@@ -205,11 +205,26 @@ run: build
 
 #R095: Run Matchy-compatible API from scripts path through make entrypoint.
 run-api:
-	@if [ -n "$$OUTLOOK_GRAPH_CLIENT_ID" ]; then \
+	@RESOLVED_WRITE_TOKEN="$${MAILCART_API_WRITE_TOKEN:-$${TELLER_CLASSIFIER_WRITE_TOKEN:-}}"; \
+	if [ -z "$$RESOLVED_WRITE_TOKEN" ] && [ -n "$$CLASSY_WRITE_TOKEN" ]; then \
+		RESOLVED_WRITE_TOKEN="$$CLASSY_WRITE_TOKEN"; \
+	fi; \
+	if [ -z "$$RESOLVED_WRITE_TOKEN" ] && command -v 1psa >/dev/null 2>&1; then \
+		RESOLVED_WRITE_TOKEN="$$(1psa -p CLASSY_WRITE_TOKEN 2>/dev/null || true)"; \
+	fi; \
+	if [ -z "$$RESOLVED_WRITE_TOKEN" ] && [ -f "$$HOME/.env" ]; then \
+		RESOLVED_WRITE_TOKEN="$$(awk -F= '/^[[:space:]]*CLASSY_WRITE_TOKEN[[:space:]]*=/{value=$$0; sub(/^[^=]*=/,"",value); gsub(/^[[:space:]]+|[[:space:]]+$$/,"",value); gsub(/^\"|\"$$|^\047|\047$$/,"",value); print value; exit}' "$$HOME/.env")"; \
+	fi; \
+	if [ -z "$$RESOLVED_WRITE_TOKEN" ]; then \
+		echo "Unable to resolve Mailcart API write token."; \
+		echo "Set MAILCART_API_WRITE_TOKEN, TELLER_CLASSIFIER_WRITE_TOKEN, or CLASSY_WRITE_TOKEN."; \
+		exit 1; \
+	fi; \
+	if [ -n "$$OUTLOOK_GRAPH_CLIENT_ID" ]; then \
 		MAILCART_REPO_ROOT="$(MAILCART_REPO_ROOT)" OUTLOOK_GRAPH_CLIENT_ID="$$OUTLOOK_GRAPH_CLIENT_ID" python3 "$(MAILCART_REPO_ROOT)/scripts/refresh_graph_token.py" || true; \
 	fi; \
 	MAILCART_MATCHY_TLS_DIR="$(MAILCART_MATCHY_TLS_DIR)" MAILCART_MATCHY_TLS_CERT_FILE="$(MAILCART_MATCHY_TLS_CERT_FILE)" MAILCART_MATCHY_TLS_KEY_FILE="$(MAILCART_MATCHY_TLS_KEY_FILE)" bash "$(MAILCART_REPO_ROOT)/05_install_matchy_api_tls.sh"; \
-	MAILCART_REPO_ROOT="$(MAILCART_REPO_ROOT)" OUTLOOK_GRAPH_CLIENT_ID="$$OUTLOOK_GRAPH_CLIENT_ID" MAILCART_MATCHY_TLS_DIR="$(MAILCART_MATCHY_TLS_DIR)" MAILCART_MATCHY_TLS_CERT_FILE="$(MAILCART_MATCHY_TLS_CERT_FILE)" MAILCART_MATCHY_TLS_KEY_FILE="$(MAILCART_MATCHY_TLS_KEY_FILE)" python3 "$(MAILCART_REPO_ROOT)/scripts/matchy_mailcart_api.py"
+	MAILCART_REPO_ROOT="$(MAILCART_REPO_ROOT)" OUTLOOK_GRAPH_CLIENT_ID="$$OUTLOOK_GRAPH_CLIENT_ID" MAILCART_MATCHY_TLS_DIR="$(MAILCART_MATCHY_TLS_DIR)" MAILCART_MATCHY_TLS_CERT_FILE="$(MAILCART_MATCHY_TLS_CERT_FILE)" MAILCART_MATCHY_TLS_KEY_FILE="$(MAILCART_MATCHY_TLS_KEY_FILE)" MAILCART_API_WRITE_TOKEN="$$RESOLVED_WRITE_TOKEN" TELLER_CLASSIFIER_WRITE_TOKEN="$$RESOLVED_WRITE_TOKEN" python3 "$(MAILCART_REPO_ROOT)/scripts/matchy_mailcart_api.py"
 
 #R100: Expose stable entrypoints for crash and Matchy script lanes.
 verify-macos-crash-reporter: crash-reporter-smoke
