@@ -46,6 +46,7 @@ WRITE_TOKEN_HEADER_NAME = os.environ.get("MAILCART_API_WRITE_TOKEN_HEADER", "X-T
 WRITE_TOKEN_ENV_VARS = ("MAILCART_API_WRITE_TOKEN", "TELLER_CLASSIFIER_WRITE_TOKEN", "CLASSY_WRITE_TOKEN")
 
 
+#R620: Normalize configured/caller write tokens by trimming and stripping optional Bearer prefixes.
 def _normalized_write_token(token_value: str | None) -> str:
     normalized = (token_value or "").strip()
     if normalized.lower().startswith("bearer "):
@@ -76,7 +77,9 @@ def _require_api_write_token(
     provided_token: str | None = Header(default=None, alias=WRITE_TOKEN_HEADER_NAME),
     authorization_header: str | None = Header(default=None, alias="Authorization"),
 ) -> None:
-    candidate_token = (provided_token or "").strip() or (authorization_header or "").strip()
+    candidate_token = provided_token.strip() if isinstance(provided_token, str) else ""
+    if not candidate_token:
+        candidate_token = authorization_header.strip() if isinstance(authorization_header, str) else ""
     if not _configured_write_token():
         raise HTTPException(
             status_code=503,
