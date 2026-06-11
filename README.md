@@ -192,6 +192,7 @@ Recommended local verification sequence:
 2. `make sast`
 3. `make test`
 4. `make ui-test`
+5. `./07_clean_generated_files.sh` (optional cleanup; moves generated outputs to `~/.Trash`)
 
 If CI is added later, use the same sequence to keep local and CI checks aligned.
 
