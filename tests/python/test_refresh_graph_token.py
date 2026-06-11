@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import io
+import os
 import sys
 import unittest
 from pathlib import Path
@@ -12,11 +13,18 @@ from unittest import mock
 def _resolve_scripts_dir(module_filename: str) -> Path:
     #R001: Resolve scripts directory robustly for copied mutation/fuzz test paths.
     # Keep imports stable when tests are copied under artifacts/mutation/mutants.
-    probe_roots = [Path.cwd().resolve(), *Path(__file__).resolve().parents]
+    mutation_mode = bool(os.environ.get("MUTATION_IMPORT_PREPEND") or os.environ.get("MUTANT_UNDER_TEST"))
+    env_roots = [Path(raw).resolve() for raw in os.environ.get("MUTATION_IMPORT_PREPEND", "").split(os.pathsep) if raw]
+    probe_roots = [*env_roots, Path.cwd().resolve(), *Path(__file__).resolve().parents]
     for root in probe_roots:
-        candidate = root / "scripts"
-        if (candidate / module_filename).is_file():
-            return candidate
+        candidates: list[Path]
+        if mutation_mode:
+            candidates = [root / "mutants" / "scripts", root / "scripts", root]
+        else:
+            candidates = [root / "scripts", root]
+        for candidate in candidates:
+            if (candidate / module_filename).is_file():
+                return candidate
     return Path(__file__).resolve().parents[2] / "scripts"
 
 
