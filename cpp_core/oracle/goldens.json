@@ -1,0 +1,205 @@
+[
+  {
+    "body": {
+      "status": "ok"
+    },
+    "name": "health_without_token",
+    "status": 200
+  },
+  {
+    "body": {
+      "status": "ok",
+      "token_expires_at": "4102444800",
+      "token_status": "valid"
+    },
+    "name": "health_with_valid_token",
+    "status": 200
+  },
+  {
+    "body": {
+      "detail": "Mailcart API write token is not configured. Set MAILCART_API_WRITE_TOKEN or TELLER_CLASSIFIER_WRITE_TOKEN (CLASSY_WRITE_TOKEN is also accepted)."
+    },
+    "name": "search_write_token_not_configured",
+    "status": 503
+  },
+  {
+    "body": {
+      "detail": "Unauthorized"
+    },
+    "name": "search_invalid_write_token",
+    "status": 401,
+    "www_authenticate": "X-Teller-Write-Token"
+  },
+  {
+    "body": {
+      "messages": [
+        {
+          "body_text": "hi there body",
+          "message_id": "AAA111",
+          "preview": "hi there",
+          "received_at": "2024-01-02T10:00:00Z",
+          "sender": "alice@example.com",
+          "subject": "Hello world"
+        },
+        {
+          "body_text": " Invoice  42  ",
+          "message_id": "BBB222",
+          "preview": "please pay",
+          "received_at": "2024-01-01T09:00:00Z",
+          "sender": "billing@vendor.com",
+          "subject": "Invoice 42"
+        }
+      ]
+    },
+    "name": "search_empty_query_returns_recent",
+    "status": 200
+  },
+  {
+    "body": {
+      "messages": [
+        {
+          "body_text": "amount due",
+          "message_id": "MATCH1",
+          "preview": "please pay",
+          "received_at": "2024-01-02T10:00:00Z",
+          "sender": "billing@vendor.com",
+          "subject": "Invoice 42 for July"
+        }
+      ]
+    },
+    "name": "search_subject_scope_filters",
+    "status": 200
+  },
+  {
+    "body": {
+      "messages": []
+    },
+    "name": "search_unscoped_query_returns_empty",
+    "status": 200
+  },
+  {
+    "body": {
+      "detail": [
+        {
+          "ctx": {
+            "ge": 1
+          },
+          "input": "0",
+          "loc": [
+            "query",
+            "limit"
+          ],
+          "msg": "Input should be greater than or equal to 1",
+          "type": "greater_than_equal"
+        }
+      ]
+    },
+    "name": "search_limit_below_minimum_422",
+    "status": 422
+  },
+  {
+    "body": {
+      "detail": [
+        {
+          "input": "abc",
+          "loc": [
+            "query",
+            "limit"
+          ],
+          "msg": "Input should be a valid integer, unable to parse string as an integer",
+          "type": "int_parsing"
+        }
+      ]
+    },
+    "name": "search_limit_not_an_integer_422",
+    "status": 422
+  },
+  {
+    "body": {
+      "detail": "Graph authentication failed: token refresh failed."
+    },
+    "name": "search_graph_auth_failure_502",
+    "status": 502
+  },
+  {
+    "body": {
+      "body_text": "<p>Body</p>",
+      "html_body": "<p>Body</p>",
+      "message_id": "AAAA1234",
+      "preview": "prev",
+      "received_at": "2024-03-03T12:00:00Z",
+      "recipients": "me@x.com,cc@x.com",
+      "sender": "bob@x.com",
+      "subject": "Re: hello",
+      "text_body": ""
+    },
+    "name": "get_message_maps_html_and_recipients",
+    "status": 200
+  },
+  {
+    "body": {
+      "detail": "message not found"
+    },
+    "name": "get_message_short_id_404",
+    "status": 404
+  },
+  {
+    "body": {
+      "detail": "Graph reports message not found: ItemNotFound: message does not exist"
+    },
+    "name": "get_message_not_found_passthrough_404",
+    "status": 404
+  },
+  {
+    "body": {
+      "folder_id": "folder-matchy",
+      "moved": true,
+      "result_id": "moved-1"
+    },
+    "name": "move_message_existing_folder",
+    "status": 200
+  },
+  {
+    "body": {
+      "folder_id": "new-folder",
+      "moved": true,
+      "result_id": "moved-2"
+    },
+    "name": "move_message_creates_folder",
+    "status": 200
+  },
+  {
+    "body": {
+      "detail": [
+        {
+          "ctx": {
+            "min_length": 1
+          },
+          "input": "",
+          "loc": [
+            "body",
+            "folder_name"
+          ],
+          "msg": "String should have at least 1 character",
+          "type": "string_too_short"
+        }
+      ]
+    },
+    "name": "move_message_blank_folder_422",
+    "status": 422
+  },
+  {
+    "body": {
+      "detail": "Not Found"
+    },
+    "name": "routing_nested_path_404",
+    "status": 404
+  },
+  {
+    "body": {
+      "detail": "Method Not Allowed"
+    },
+    "name": "routing_method_not_allowed_405",
+    "status": 405
+  }
+]

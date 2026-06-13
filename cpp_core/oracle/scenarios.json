@@ -1,0 +1,295 @@
+{
+  "description": "Mailcart Python->C++ oracle parity scenarios. Each scenario drives one HTTP request through both the FastAPI reference app (oracle/compare_oracle.py) and the C++ API handlers (mailcart_oracle_runner) against the same canned Graph upstream. graph[] entries are matched in order by method+path (and optional params subset); 'json' bodies are serialized for success payloads, 'body' is an opaque literal used where the response text is echoed verbatim into an error detail so the two stacks stay byte-identical.",
+  "scenarios": [
+    {
+      "name": "health_without_token",
+      "write_token": "",
+      "request": {"method": "GET", "path": "/health"}
+    },
+    {
+      "name": "health_with_valid_token",
+      "write_token": "secret-token",
+      "request": {
+        "method": "GET",
+        "path": "/health",
+        "headers": {"X-Teller-Write-Token": "secret-token"}
+      }
+    },
+    {
+      "name": "search_write_token_not_configured",
+      "write_token": "",
+      "request": {
+        "method": "GET",
+        "path": "/v1/messages/search",
+        "query": {"query": ""}
+      }
+    },
+    {
+      "name": "search_invalid_write_token",
+      "write_token": "secret-token",
+      "request": {
+        "method": "GET",
+        "path": "/v1/messages/search",
+        "query": {"query": ""},
+        "headers": {"X-Teller-Write-Token": "wrong-token"}
+      }
+    },
+    {
+      "name": "search_empty_query_returns_recent",
+      "write_token": "secret-token",
+      "graph": [
+        {
+          "method": "GET",
+          "path": "/me/messages",
+          "status": 200,
+          "json": {
+            "value": [
+              {
+                "id": "AAA111",
+                "subject": "Hello world",
+                "bodyPreview": "hi there",
+                "receivedDateTime": "2024-01-02T10:00:00Z",
+                "from": {"emailAddress": {"address": "alice@example.com"}},
+                "body": {"contentType": "text", "content": "hi there body"}
+              },
+              {
+                "id": "BBB222",
+                "subject": "Invoice 42",
+                "bodyPreview": "please pay",
+                "receivedDateTime": "2024-01-01T09:00:00Z",
+                "from": {"emailAddress": {"address": "billing@vendor.com"}},
+                "body": {"contentType": "html", "content": "<p>Invoice <b>42</b></p>"}
+              }
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/v1/messages/search",
+        "query": {"query": ""},
+        "headers": {"X-Teller-Write-Token": "secret-token"}
+      }
+    },
+    {
+      "name": "search_subject_scope_filters",
+      "write_token": "secret-token",
+      "graph": [
+        {
+          "method": "GET",
+          "path": "/me/messages",
+          "status": 200,
+          "json": {
+            "value": [
+              {
+                "id": "MATCH1",
+                "subject": "Invoice 42 for July",
+                "bodyPreview": "please pay",
+                "receivedDateTime": "2024-01-02T10:00:00Z",
+                "from": {"emailAddress": {"address": "billing@vendor.com"}},
+                "body": {"contentType": "text", "content": "amount due"}
+              },
+              {
+                "id": "SKIP1",
+                "subject": "Lunch plans",
+                "bodyPreview": "tacos?",
+                "receivedDateTime": "2024-01-01T09:00:00Z",
+                "from": {"emailAddress": {"address": "friend@example.com"}},
+                "body": {"contentType": "text", "content": "meet at noon"}
+              }
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/v1/messages/search",
+        "query": {"query": "subject:invoice"},
+        "headers": {"X-Teller-Write-Token": "secret-token"}
+      }
+    },
+    {
+      "name": "search_unscoped_query_returns_empty",
+      "write_token": "secret-token",
+      "request": {
+        "method": "GET",
+        "path": "/v1/messages/search",
+        "query": {"query": "just some words"},
+        "headers": {"X-Teller-Write-Token": "secret-token"}
+      }
+    },
+    {
+      "name": "search_limit_below_minimum_422",
+      "write_token": "secret-token",
+      "request": {
+        "method": "GET",
+        "path": "/v1/messages/search",
+        "query": {"query": "", "limit": "0"},
+        "headers": {"X-Teller-Write-Token": "secret-token"}
+      }
+    },
+    {
+      "name": "search_limit_not_an_integer_422",
+      "write_token": "secret-token",
+      "request": {
+        "method": "GET",
+        "path": "/v1/messages/search",
+        "query": {"query": "", "limit": "abc"},
+        "headers": {"X-Teller-Write-Token": "secret-token"}
+      }
+    },
+    {
+      "name": "search_graph_auth_failure_502",
+      "write_token": "secret-token",
+      "graph": [
+        {
+          "method": "GET",
+          "path": "/me/messages",
+          "status": 401,
+          "body": "InvalidAuthenticationToken: token expired"
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/v1/messages/search",
+        "query": {"query": "subject:x"},
+        "headers": {"X-Teller-Write-Token": "secret-token"}
+      }
+    },
+    {
+      "name": "get_message_maps_html_and_recipients",
+      "write_token": "secret-token",
+      "graph": [
+        {
+          "method": "GET",
+          "path": "/me/messages/AAAA1234",
+          "status": 200,
+          "json": {
+            "id": "AAAA1234",
+            "subject": "Re: hello",
+            "bodyPreview": "prev",
+            "from": {"emailAddress": {"address": "bob@x.com"}},
+            "toRecipients": [
+              {"emailAddress": {"address": "me@x.com"}},
+              {"emailAddress": {"address": "cc@x.com"}}
+            ],
+            "body": {"contentType": "html", "content": "<p>Body</p>"},
+            "receivedDateTime": "2024-03-03T12:00:00Z"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/v1/messages/AAAA1234",
+        "headers": {"X-Teller-Write-Token": "secret-token"}
+      }
+    },
+    {
+      "name": "get_message_short_id_404",
+      "write_token": "secret-token",
+      "request": {
+        "method": "GET",
+        "path": "/v1/messages/short",
+        "headers": {"X-Teller-Write-Token": "secret-token"}
+      }
+    },
+    {
+      "name": "get_message_not_found_passthrough_404",
+      "write_token": "secret-token",
+      "graph": [
+        {
+          "method": "GET",
+          "path": "/me/messages/MISSING99",
+          "status": 404,
+          "body": "ItemNotFound: message does not exist"
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/v1/messages/MISSING99",
+        "headers": {"X-Teller-Write-Token": "secret-token"}
+      }
+    },
+    {
+      "name": "move_message_existing_folder",
+      "write_token": "secret-token",
+      "graph": [
+        {
+          "method": "GET",
+          "path": "/me/mailFolders",
+          "status": 200,
+          "json": {"value": [{"id": "folder-matchy", "displayName": "matchy"}]}
+        },
+        {
+          "method": "POST",
+          "path": "/me/messages/MOVEME1234/move",
+          "status": 200,
+          "json": {"id": "moved-1"}
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/v1/messages/MOVEME1234/move",
+        "headers": {"X-Teller-Write-Token": "secret-token"},
+        "body": {"folder_name": "matchy"}
+      }
+    },
+    {
+      "name": "move_message_creates_folder",
+      "write_token": "secret-token",
+      "graph": [
+        {
+          "method": "GET",
+          "path": "/me/mailFolders",
+          "status": 200,
+          "json": {"value": []}
+        },
+        {
+          "method": "POST",
+          "path": "/me/mailFolders",
+          "status": 200,
+          "json": {"id": "new-folder", "displayName": "matchy"}
+        },
+        {
+          "method": "POST",
+          "path": "/me/messages/MOVEME5678/move",
+          "status": 200,
+          "json": {"id": "moved-2"}
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/v1/messages/MOVEME5678/move",
+        "headers": {"X-Teller-Write-Token": "secret-token"},
+        "body": {"folder_name": "matchy"}
+      }
+    },
+    {
+      "name": "move_message_blank_folder_422",
+      "write_token": "secret-token",
+      "request": {
+        "method": "POST",
+        "path": "/v1/messages/MOVEME9999/move",
+        "headers": {"X-Teller-Write-Token": "secret-token"},
+        "body": {"folder_name": ""}
+      }
+    },
+    {
+      "name": "routing_nested_path_404",
+      "write_token": "secret-token",
+      "request": {
+        "method": "GET",
+        "path": "/v1/messages/aaa/bbb",
+        "headers": {"X-Teller-Write-Token": "secret-token"}
+      }
+    },
+    {
+      "name": "routing_method_not_allowed_405",
+      "write_token": "secret-token",
+      "request": {
+        "method": "POST",
+        "path": "/health"
+      }
+    }
+  ]
+}

@@ -24,11 +24,17 @@ MAILCART_REPO_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 MAILCART_MATCHY_TLS_DIR ?= $(HOME)/.mailcart
 MAILCART_MATCHY_TLS_CERT_FILE ?= $(MAILCART_MATCHY_TLS_DIR)/matchy-localhost-cert.pem
 MAILCART_MATCHY_TLS_KEY_FILE ?= $(MAILCART_MATCHY_TLS_DIR)/matchy-localhost-key.pem
+CPP_CORE_DIR ?= cpp_core
+CPP_BUILD_DIR ?= $(CPP_CORE_DIR)/build
+CPP_ASAN_BUILD_DIR ?= $(CPP_CORE_DIR)/build-asan
+CMAKE ?= cmake
+CTEST ?= ctest
 
 .DEFAULT_GOAL := help
 
 .PHONY: help build test ui-test run run-ui crash crash-reporter-smoke \
 	sast lint clam clean \
+	core core-test sanitize parity fuzz \
 	_cpp-test _graph-replay-test _bridge-check _ui-typecheck _ui-build _ui-rebuild _shell-tests _python-tests _swift-unit-tests _ui-regression _ui-xcuitests _ui-smoke \
 	_sast_shell _sast_semgrep _sast_bandit _sast_detect_secrets _sast_clang_tidy _sast_secrets \
 	_lint_swiftlint _lint_python_equivalent \
@@ -45,7 +51,11 @@ help:
 	@echo "  make ui-test - Run inline + XCUITest UI regressions and app smoke launch check"
 	@echo "  make crash   - Verify PLCrashReporter crash capture and replay flow"
 	@echo "  make run-ui  - Build and launch macOS app"
-	@echo "  make run-api - Run Matchy-compatible API"
+	@echo "  make run-api - Run Matchy-compatible API (C++ mailcart_api over HTTPS)"
+	@echo "  make core    - Configure and build the mailcartcore C++ library and tools"
+	@echo "  make core-test - Build and run the Catch2 unit suite via ctest"
+	@echo "  make sanitize - Build and run the Catch2 suite under ASan+UBSan"
+	@echo "  make parity  - Replay the oracle goldens against the C++ API handlers"
 	@echo "  make clean   - Remove local build artifacts"
 
 #R005: Build all repository deliverables and checks.
@@ -55,8 +65,8 @@ help:
 #R025: Build lane rebuilds app deterministically when binary is missing.
 build: _bridge-check _ui-typecheck _ui-build
 
-#R005: Run C++ integration, Python API checks, Swift unit suite, and shell BATS regression coverage.
-test: _cpp-test _python-tests _swift-unit-tests _shell-tests
+#R005: Run C++ Catch2 unit suite, oracle parity replay, Python API checks, Swift unit suite, and shell BATS coverage.
+test: _cpp-test parity _python-tests _swift-unit-tests _shell-tests
 
 #R035: Run UI-focused test lane.
 ui-test: _ui-build
@@ -203,8 +213,8 @@ run: build
 	APP_PID=$$!; \
 	echo "Launched $(APP_NAME) with Graph token (pid $$APP_PID)."
 
-#R095: Run Matchy-compatible API from scripts path through make entrypoint.
-run-api:
+#R095: Run Matchy-compatible API (C++ mailcart_api) over HTTPS through the make entrypoint.
+run-api: core
 	@RESOLVED_WRITE_TOKEN="$${MAILCART_API_WRITE_TOKEN:-$${TELLER_CLASSIFIER_WRITE_TOKEN:-}}"; \
 	if [ -z "$$RESOLVED_WRITE_TOKEN" ] && [ -n "$$CLASSY_WRITE_TOKEN" ]; then \
 		RESOLVED_WRITE_TOKEN="$$CLASSY_WRITE_TOKEN"; \
@@ -221,10 +231,10 @@ run-api:
 		exit 1; \
 	fi; \
 	if [ -n "$$OUTLOOK_GRAPH_CLIENT_ID" ]; then \
-		MAILCART_REPO_ROOT="$(MAILCART_REPO_ROOT)" OUTLOOK_GRAPH_CLIENT_ID="$$OUTLOOK_GRAPH_CLIENT_ID" python3 "$(MAILCART_REPO_ROOT)/scripts/refresh_graph_token.py" || true; \
+		OUTLOOK_GRAPH_CLIENT_ID="$$OUTLOOK_GRAPH_CLIENT_ID" "$(CPP_BUILD_DIR)/mailcart_token" || true; \
 	fi; \
 	MAILCART_MATCHY_TLS_DIR="$(MAILCART_MATCHY_TLS_DIR)" MAILCART_MATCHY_TLS_CERT_FILE="$(MAILCART_MATCHY_TLS_CERT_FILE)" MAILCART_MATCHY_TLS_KEY_FILE="$(MAILCART_MATCHY_TLS_KEY_FILE)" bash "$(MAILCART_REPO_ROOT)/05_install_matchy_api_tls.sh"; \
-	MAILCART_REPO_ROOT="$(MAILCART_REPO_ROOT)" OUTLOOK_GRAPH_CLIENT_ID="$$OUTLOOK_GRAPH_CLIENT_ID" MAILCART_MATCHY_TLS_DIR="$(MAILCART_MATCHY_TLS_DIR)" MAILCART_MATCHY_TLS_CERT_FILE="$(MAILCART_MATCHY_TLS_CERT_FILE)" MAILCART_MATCHY_TLS_KEY_FILE="$(MAILCART_MATCHY_TLS_KEY_FILE)" MAILCART_API_WRITE_TOKEN="$$RESOLVED_WRITE_TOKEN" TELLER_CLASSIFIER_WRITE_TOKEN="$$RESOLVED_WRITE_TOKEN" python3 "$(MAILCART_REPO_ROOT)/scripts/matchy_mailcart_api.py"
+	OUTLOOK_GRAPH_CLIENT_ID="$$OUTLOOK_GRAPH_CLIENT_ID" MAILCART_MATCHY_TLS_CERT_FILE="$(MAILCART_MATCHY_TLS_CERT_FILE)" MAILCART_MATCHY_TLS_KEY_FILE="$(MAILCART_MATCHY_TLS_KEY_FILE)" MAILCART_API_WRITE_TOKEN="$$RESOLVED_WRITE_TOKEN" TELLER_CLASSIFIER_WRITE_TOKEN="$$RESOLVED_WRITE_TOKEN" "$(CPP_BUILD_DIR)/mailcart_api"
 
 #R100: Expose stable entrypoints for crash and Matchy script lanes.
 verify-macos-crash-reporter: crash-reporter-smoke
@@ -237,13 +247,49 @@ run-ui: run
 crash-reporter-smoke: _ui-build
 	@bash "./scripts/verify_macos_crash_reporter.sh"
 
-_cpp-test:
-	@mkdir -p ".build"
-	@clang++ -std=c++17 \
-		-I"cpp_core/include" \
-		"cpp_core/src/mailcart.cpp" "cpp_core/src/mime_content.cpp" "cpp_core/src/outlook_mailcart.cpp" "cpp_core/src/outlook_client.cpp" "cpp_core/tests/outlook_integration_test.cpp" \
-		-o ".build/outlook_integration_test"
-	@".build/outlook_integration_test"
+#R060: Configure and build the portable mailcartcore C++ library plus CLI/server/oracle tools.
+core:
+	@$(CMAKE) -S "$(CPP_CORE_DIR)" -B "$(CPP_BUILD_DIR)" >/dev/null
+	@$(CMAKE) --build "$(CPP_BUILD_DIR)" -j
+
+#R060: Build and run the Catch2 unit suite (t17 lane entrypoint).
+core-test: core
+	@$(CTEST) --test-dir "$(CPP_BUILD_DIR)" --output-on-failure
+
+#R060: Build and run the Catch2 suite under AddressSanitizer + UndefinedBehaviorSanitizer (t18 lane).
+sanitize:
+	@$(CMAKE) -S "$(CPP_CORE_DIR)" -B "$(CPP_ASAN_BUILD_DIR)" -DMAILCARTCORE_SANITIZE=ON >/dev/null
+	@$(CMAKE) --build "$(CPP_ASAN_BUILD_DIR)" -j
+	@ASAN_OPTIONS=detect_leaks=0 $(CTEST) --test-dir "$(CPP_ASAN_BUILD_DIR)" --output-on-failure
+
+#R060: Replay the frozen Python/C++ oracle goldens through the C++ API handlers (t19 lane).
+parity: core
+	@"$(CPP_BUILD_DIR)/mailcart_oracle_runner" replay \
+		--scenarios "$(CPP_CORE_DIR)/oracle/scenarios.json" \
+		--golden "$(CPP_CORE_DIR)/oracle/goldens.json"
+
+#R060: Build the libFuzzer targets with brew LLVM (Apple clang lacks the runtime) and run a budget (t20 lane).
+FUZZ_BUILD_DIR ?= $(CPP_CORE_DIR)/build-fuzz
+FUZZ_LLVM_PREFIX ?= /opt/homebrew/opt/llvm
+FUZZ_RUNS ?= 200000
+fuzz:
+	@if [ ! -x "$(FUZZ_LLVM_PREFIX)/bin/clang++" ]; then \
+		echo "libFuzzer requires Homebrew LLVM at $(FUZZ_LLVM_PREFIX) (brew install llvm)."; \
+		exit 1; \
+	fi
+	@$(CMAKE) -S "$(CPP_CORE_DIR)" -B "$(FUZZ_BUILD_DIR)" \
+		-DMAILCARTCORE_BUILD_FUZZERS=ON -DMAILCARTCORE_BUILD_TESTS=OFF \
+		-DMAILCARTCORE_BUILD_TOOLS=OFF -DMAILCARTCORE_ENABLE_HTTP=OFF \
+		-DCMAKE_C_COMPILER="$(FUZZ_LLVM_PREFIX)/bin/clang" \
+		-DCMAKE_CXX_COMPILER="$(FUZZ_LLVM_PREFIX)/bin/clang++" >/dev/null
+	@$(CMAKE) --build "$(FUZZ_BUILD_DIR)" -j
+	@for target in fuzz_query_parse fuzz_aho_corasick fuzz_graph_payloads; do \
+		echo "▶ Fuzzing $$target ($(FUZZ_RUNS) runs)"; \
+		ASAN_OPTIONS=detect_leaks=0 "$(FUZZ_BUILD_DIR)/$$target" -runs=$(FUZZ_RUNS) -max_len=2048 || exit 1; \
+	done
+
+#R005: Run the C++ Catch2 unit suite as the integration coverage lane.
+_cpp-test: core-test
 
 _graph-replay-test:
 	@mkdir -p ".build"

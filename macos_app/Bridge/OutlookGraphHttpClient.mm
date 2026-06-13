@@ -127,15 +127,27 @@ namespace mailcart_bridge
     {
       return NO;
     }
-    NSString *script_path = [NSString stringWithFormat:@"%s/scripts/refresh_graph_token.py", repo_root];
-    if (![[NSFileManager defaultManager] fileExistsAtPath:script_path])
+    // The Python refresh_graph_token.py CLI was retired in the C++ migration; the
+    // shared token cache is now refreshed by the mailcart_token binary built from
+    // cpp_core. MAILCART_TOKEN_BIN overrides the default build location for tests.
+    NSString *token_bin = nil;
+    const char *bin_override = std::getenv("MAILCART_TOKEN_BIN");
+    if (bin_override != nullptr && bin_override[0] != '\0')
+    {
+      token_bin = [NSString stringWithUTF8String:bin_override];
+    }
+    else
+    {
+      token_bin = [NSString stringWithFormat:@"%s/cpp_core/build/mailcart_token", repo_root];
+    }
+    if (token_bin == nil || ![[NSFileManager defaultManager] isExecutableFileAtPath:token_bin])
     {
       return NO;
     }
 
     NSTask *task = [[NSTask alloc] init];
-    task.launchPath = @"/usr/bin/python3";
-    task.arguments = @[script_path, @"--force"];
+    task.launchPath = token_bin;
+    task.arguments = @[@"--force"];
     task.environment = [NSProcessInfo processInfo].environment;
     @try
     {

@@ -79,9 +79,9 @@ C++ core (cpp_core/)                domain model + client orchestration
 
 Objective-C++ layer connecting Swift to the C++ core. It exposes `searchMailcartsWithQuery:limit:cursor:`,
 `readMailcartWithMessageId:`, and `moveMessageToFolder:` to Swift, performs synchronous Graph HTTP, and on a
-`401` spawns `scripts/refresh_graph_token.py --force` and retries once. Token is resolved from
-`~/.cache/mailcart/graph_oauth.json` or the `OUTLOOK_GRAPH_TOKEN` environment variable. Immutable Objective-C
-DTOs isolate Swift from C++/Graph details.
+`401` spawns the `cpp_core/build/mailcart_token --force` binary (overridable via `MAILCART_TOKEN_BIN`) and
+retries once. Token is resolved from `~/.cache/mailcart/graph_oauth.json` or the `OUTLOOK_GRAPH_TOKEN`
+environment variable. Immutable Objective-C DTOs isolate Swift from C++/Graph details.
 
 ### Swift UI (`macos_app/UI/`)
 
@@ -116,8 +116,26 @@ fallback). Date-bounded searches follow Graph `@odata.nextLink` pagination.
 ```
 
 Microsoft Graph delegated scopes: `Mail.Read` (search/read) and `Mail.ReadWrite` (move matched messages to the
-`matchy` folder). `scripts/refresh_graph_token.py` warms the shared cache and is invoked by `make run`,
-`make run-api`, and the bridge's 401 handler.
+`matchy` folder). The `mailcart_token` CLI (built from `cpp_core/`, a port of the retired
+`scripts/refresh_graph_token.py`) warms the shared cache and is invoked by `make run-api` and the bridge's 401
+handler.
+
+## C++ migration status (Python -> C++)
+
+The Graph integration is being migrated from Python to the portable `cpp_core/` C++20 core, following the
+classy/teller family pattern:
+
+- `cpp_core/src/token.cpp` (+ `mailcart_token` CLI) ports `scripts/graph_token.py` and
+  `scripts/refresh_graph_token.py`. The bridge 401 handler and `make run-api` now use the C++ binary.
+- `cpp_core/src/{search,graph,api}.cpp` (+ the `mailcart_api` HTTPS server, built with cpp-httplib/OpenSSL) port
+  the scoped search, Graph client, and endpoint layer of `scripts/matchy_mailcart_api.py`, preserving the
+  `/v1/messages/*` contract, status codes, and JSON envelopes. `make run-api` serves via `mailcart_api`.
+- `cpp_core/openapi/openapi.json` is the frozen FastAPI contract export retained for the DAST/Schemathesis lane.
+- `cpp_core/oracle/` holds the parity harness: `compare_oracle.py` drives the same `scenarios.json` through the
+  FastAPI reference app and the C++ `mailcart_oracle_runner` and diffs them; `goldens.json` is the frozen result
+  that the C++ runner replays after the Python reference is retired (`make parity`).
+- The Python sources remain as the parity oracle until the t06/t07/t10/t11 lanes, the runner profile, and CI are
+  cut over to the C++ lanes (t17 unit, t18 sanitizer, t19 parity, t20 fuzz).
 
 ## Search Algorithm: Aho-Corasick
 
@@ -137,13 +155,17 @@ The `Makefile` is the primary developer interface; numbered scripts are thin run
 | Target | What it does |
 |--------|--------------|
 | `make build` | Bridge compile check + Swift typecheck + Xcode app build |
-| `make test` | C++ integration test + Python unittest + Bats shell tests |
+| `make test` | C++ Catch2 unit suite + oracle parity replay + Python unittest + Bats shell tests |
+| `make core` / `core-test` | Configure/build `mailcartcore` + tools; run the Catch2 suite via ctest |
+| `make sanitize` | Catch2 suite under ASan+UBSan in a separate `build-asan/` tree |
+| `make parity` | Replay `cpp_core/oracle/goldens.json` through the C++ API handlers |
+| `make fuzz` | Build/run the libFuzzer targets (query parse, Aho-Corasick, Graph payloads) via brew LLVM |
 | `make ui-test` | Inline UI regression + XCUITest suite + smoke launch (optional crash-reporter smoke) |
 | `make sast` | ShellCheck, Semgrep, Bandit, detect-secrets, gitleaks |
 | `make lint` | clang-tidy (C++/ObjC++), SwiftLint, Ruff (all blocking) |
 | `make clam` | ClamAV recursive scan |
 | `make run` | Build app, refresh token, read 1psa token, launch macOS app |
-| `make run-api` | Refresh token, ensure TLS, start the FastAPI server on 8788 |
+| `make run-api` | Refresh token (`mailcart_token`), ensure TLS, start the C++ `mailcart_api` HTTPS server on 8788 |
 
 Numbered runbook scripts (`01`-`06`) and `tests/tNN_*` lanes are thin pointers that set
 `RUNBOOK_REPO_ROOT`, source `runner/config/runbook/mailcart.env`, and exec the corresponding golden in
@@ -160,9 +182,9 @@ search matcher). The traceability lane verifies that requirements, source tags, 
 
 | Layer | Stack |
 |-------|-------|
-| Domain core | C++17 (`cpp_core/`) |
+| Domain core | C++20 (`cpp_core/`: CMake + FetchContent for nlohmann/json, cpp-httplib, Catch2); legacy C++17 model types |
 | Bridge | Objective-C / Objective-C++ (Graph HTTP, JSON) |
 | UI | Swift / SwiftUI (macOS 13+), XCUITest; project from `macos_app/project.yml` via XcodeGen |
-| API | Python 3 (FastAPI, uvicorn, requests) |
+| API | C++ `mailcart_api` (cpp-httplib + OpenSSL); Python 3 (FastAPI) retained as the parity oracle pending retirement |
 | Tooling | Make, BATS, ShellCheck, Semgrep, Bandit, detect-secrets, gitleaks, clang-tidy, SwiftLint, Ruff, ClamAV |
 | Crash reporting | PLCrashReporter (SPM) |

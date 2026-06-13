@@ -8,6 +8,10 @@ artifacts/
 #R015: Support cached-removal cleanup policy for generated artifacts.
 #R020: Keep ignored artifact paths untracked after cleanup.
 .build/
+#R060: Exclude out-of-tree CMake build trees for the C++ core.
+cpp_core/build/
+cpp_core/build-asan/
+cpp_core/build-fuzz/
 #R001: Exclude generated SAST reports from version control.
 reports/sast/
 #R030: Exclude generated dependency freshness reports from version control.
